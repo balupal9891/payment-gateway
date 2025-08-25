@@ -1,16 +1,17 @@
 import React, { type ReactNode } from 'react';
-import Sidebar from './Sidebar';
-import Header from './Header';
+import Sidebar from '../Sidebar';
+import Header from '../Header';
+import { Outlet } from 'react-router-dom';
 
 interface LayoutProps {
-  children: ReactNode;
+  // children: ReactNode;
   userInitial?: string;
   userAvatarColor?: string;
 }
 
 const Layout: React.FC<LayoutProps> = ({
-  children,
-  userInitial = 'b',
+  // children,
+  userInitial,
   userAvatarColor = 'bg-pink-300'
 }) => {
   return (
@@ -20,7 +21,7 @@ const Layout: React.FC<LayoutProps> = ({
         <Header userInitial={userInitial} userAvatarColor={userAvatarColor} />
         <div className="flex-1 p-4 overflow-y-auto overflow-x-hidden">
           <div className="max-w-full">
-            {children}
+            <Outlet />
           </div>
         </div>
       </div>

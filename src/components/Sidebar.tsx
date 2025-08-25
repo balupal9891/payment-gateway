@@ -1,107 +1,152 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { 
-  HomeIcon, 
-  DocumentTextIcon, 
+import React, { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import {
+  HomeIcon,
+  DocumentTextIcon,
   CurrencyDollarIcon,
-  LinkIcon, 
-  UserGroupIcon, 
-  Cog6ToothIcon
-} from '@heroicons/react/24/outline';
+  LinkIcon,
+  UserGroupIcon,
+  Cog6ToothIcon,
+  Bars3Icon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from "@heroicons/react/24/outline";
 
 interface SidebarProps {
   className?: string;
+  role?: "admin" | "vendor";
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
+const Sidebar: React.FC<SidebarProps> = ({ className = "", role = "admin" }) => {
   const location = useLocation();
-  
-  const navigationItems = [
-    { path: '/dashboard', icon: HomeIcon, label: 'Home' },
-    { path: '/transactions', icon: DocumentTextIcon, label: 'Transactions' },
-    { path: '/settlements', icon: CurrencyDollarIcon, label: 'Settlements' },
-    { path: '/links', icon: LinkIcon, label: 'Links' },
-    { path: '/users', icon: UserGroupIcon, label: 'Users' },
-    { path: '/payment-gateways', icon: CurrencyDollarIcon, label: 'Payment Gateways' },
-    { path: '/settings', icon: Cog6ToothIcon, label: 'Settings' },
-  ];
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Role-based nav items
+  const navConfig = {
+    admin: [
+      { path: "/dashboard", icon: HomeIcon, label: "Home" },
+      { path: "/transactions", icon: DocumentTextIcon, label: "Transactions" },
+      { path: "/settlements", icon: CurrencyDollarIcon, label: "Settlements" },
+      { path: "/links", icon: LinkIcon, label: "Links" },
+      { path: "/users", icon: UserGroupIcon, label: "Users" },
+      { path: "/payment-gateways", icon: CurrencyDollarIcon, label: "Payment Gateways" },
+      { path: "/settings", icon: Cog6ToothIcon, label: "Settings" },
+    ],
+    vendor: [
+      { path: "/dashboard", icon: HomeIcon, label: "Home" },
+      { path: "/transactions", icon: DocumentTextIcon, label: "Transactions" },
+      { path: "/settlements", icon: CurrencyDollarIcon, label: "Settlements" },
+      { path: "/links", icon: LinkIcon, label: "Links" },
+      { path: "/users", icon: UserGroupIcon, label: "Users" },
+      { path: "/settings", icon: Cog6ToothIcon, label: "Settings" },
+    ],
+  };
+
+  const navItems = navConfig[role] || navConfig.vendor;
 
   const isActive = (path: string) => {
-    if (path === '/dashboard') {
-      return location.pathname === '/' || location.pathname === '/dashboard';
+    if (path === "/dashboard") {
+      return location.pathname === "/" || location.pathname === "/dashboard";
     }
     return location.pathname === path;
   };
 
+  const NavLinks = ({ collapsed, closeMobile }: { collapsed: boolean; closeMobile?: () => void }) => (
+    <nav className="flex flex-col space-y-2">
+      {navItems.map((item) => {
+        const Icon = item.icon;
+        const active = isActive(item.path);
+        return (
+          <Link
+            key={item.path}
+            to={item.path}
+            onClick={closeMobile}
+            className={`flex items-center px-3 py-2 rounded-lg transition-colors relative group
+              ${collapsed ? "justify-center" : "justify-start space-x-3"}
+              ${active ? "bg-teal-600 text-white" : "text-teal-200 hover:bg-teal-600 hover:text-white"}`}
+            title={collapsed ? item.label : ""}
+          >
+            <Icon className="w-5 h-5" />
+            {!collapsed && <span>{item.label}</span>}
+
+            {/* Tooltip when collapsed */}
+            {collapsed && (
+              <div className="absolute left-full ml-3 px-3 py-1 bg-gray-800 text-white text-sm rounded opacity-0 pointer-events-none group-hover:opacity-100 transition-all whitespace-nowrap">
+                {item.label}
+              </div>
+            )}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+
   return (
-    <div className={`w-64 bg-teal-700 text-white ${className}`}>
-      <div className="p-6">
-        <div className="flex items-center space-x-3">
+    <>
+      {/* Mobile toggle button */}
+      <button
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        className="lg:hidden fixed top-4 left-3 z-50 p-2 bg-white rounded-lg shadow-md border border-gray-200"
+      >
+        <Bars3Icon className="w-6 h-6 text-gray-600" />
+      </button>
+
+      {/* Desktop Sidebar */}
+      <div
+        className={`hidden lg:flex h-screen bg-teal-700 text-white flex-col transition-all duration-300 relative ${
+          isCollapsed ? "w-16" : "w-64"
+        } ${className}`}
+      >
+        {/* Collapse Button */}
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="absolute top-6 -right-3 bg-white border border-gray-200 rounded-full p-1 shadow hover:bg-gray-50"
+        >
+          {isCollapsed ? (
+            <ChevronRightIcon className="w-5 h-5 text-gray-600" />
+          ) : (
+            <ChevronLeftIcon className="w-5 h-5 text-gray-600" />
+          )}
+        </button>
+
+        {/* Logo / Branding */}
+        <div className="p-6 flex items-center space-x-3">
           <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
             <span className="text-teal-700 font-bold text-lg">M</span>
           </div>
-          <span className="text-xl font-bold">motifpe</span>
+          {!isCollapsed && <span className="text-xl font-bold">motifpe</span>}
+        </div>
+
+        {/* Navigation */}
+        <div className="px-3 py-4 flex-1 overflow-y-auto">
+          <NavLinks collapsed={isCollapsed} />
         </div>
       </div>
-      
-      <nav className="mt-8">
-        <div className="px-6 py-3">
-          <div className="space-y-2">
-            {navigationItems.map((item) => {
-              const Icon = item.icon;
-              const active = isActive(item.path);
-              // Check if item has children (nested navigation)
-              if (item.children && Array.isArray(item.children)) {
-                return (
-                  <div key={item.path}>
-                    <div className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                      active 
-                        ? 'bg-teal-600 text-white' 
-                        : 'text-teal-200 hover:bg-teal-600 hover:text-white'
-                    }`}>
-                      <Icon className="w-5 h-5" />
-                      <span>{item.label}</span>
-                    </div>
-                    <div className="ml-8 mt-1 space-y-1">
-                      {item.children.map((child) => (
-                        <Link
-                          key={child.path}
-                          to={child.path}
-                          className={`block px-3 py-1 rounded transition-colors ${
-                            isActive(child.path)
-                              ? 'bg-teal-500 text-white' 
-                              : 'text-teal-100 hover:bg-teal-500 hover:text-white'
-                          }`}
-                        >
-                          {child.label}
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                );
-              }
-              // Default (no children)
-              return (
-                <Link 
-                  key={item.path}
-                  to={item.path} 
-                  className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                    active 
-                      ? 'bg-teal-600 text-white' 
-                      : 'text-teal-200 hover:bg-teal-600 hover:text-white'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
+
+      {/* Mobile Sidebar */}
+      <div
+        className={`lg:hidden fixed inset-0 z-40 transition-opacity duration-300 ${
+          isMobileMenuOpen ? "opacity-100 visible" : "opacity-0 invisible"
+        }`}
+      >
+        <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setIsMobileMenuOpen(false)} />
+        <div
+          className={`absolute left-0 top-0 h-full w-64 bg-teal-700 text-white p-4 transition-transform duration-300 ${
+            isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <div className="flex items-center space-x-3 mb-6 mt-8">
+            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+              <span className="text-teal-700 font-bold text-lg">M</span>
+            </div>
+            <span className="text-xl font-bold">motifpe</span>
           </div>
+          <NavLinks collapsed={false} closeMobile={() => setIsMobileMenuOpen(false)} />
         </div>
-      </nav>
-    </div>
+      </div>
+    </>
   );
 };
 
 export default Sidebar;
-

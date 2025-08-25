@@ -1,23 +1,57 @@
 import React from 'react';
-import { Cog6ToothIcon, ChevronRightIcon, BoltIcon } from '@heroicons/react/24/outline';
+import { Cog6ToothIcon, ChevronRightIcon, BoltIcon, GlobeAltIcon, CreditCardIcon } from '@heroicons/react/24/outline';
 
 interface PaymentGateway {
   id: number;
   name: string;
   shortName: string;
   identifier: string;
-  status: string;
+  status: 'active' | 'inactive' | 'maintenance';
   isDefault: boolean;
   logo?: string;
   type: string;
+  description: string;
+  website: string;
+  primaryCountry: string;
+  supportedCountries: string[];
+  supportedPaymentMethods: string[];
+  features: string[];
+  sandbox: {
+    apiKey: string;
+    secretKey: string;
+    endpoints: {
+      auth: string;
+      payments: string;
+      refunds: string;
+      webhook: string;
+    };
+  };
+  production: {
+    apiKey: string;
+    secretKey: string;
+    endpoints: {
+      auth: string;
+      payments: string;
+      refunds: string;
+      webhook: string;
+    };
+  };
+  isLive: boolean;
+  settlementPeriod: string;
+  feeStructure: {
+    percentage: number;
+    fixedFee: number;
+    chargebackFee: number;
+  };
 }
 
 interface PaymentGatewayCardProps {
   gateway: PaymentGateway;
   viewMode: 'cards' | 'list';
+  onEdit: any
 }
 
-const PaymentGatewayCard: React.FC<PaymentGatewayCardProps> = ({ gateway, viewMode }) => {
+const PaymentGatewayCard: React.FC<PaymentGatewayCardProps> = ({ gateway, viewMode, onEdit }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
@@ -58,24 +92,27 @@ const PaymentGatewayCard: React.FC<PaymentGatewayCardProps> = ({ gateway, viewMo
                 <BoltIcon className="w-8 h-8 text-orange-500" />
               )}
             </div>
-            
+
             {/* Gateway details */}
-            <div className="flex items-center space-x-6">
-              <div>
-                <h3 className="font-semibold text-gray-900">{gateway.shortName}</h3>
-                <p className="text-sm text-gray-500">{gateway.name}</p>
-              </div>
-              
-              {/* Status */}
-              <div className="flex items-center space-x-2">
-                <div className={`w-3 h-3 rounded-full ${getStatusColor(gateway.status)}`}></div>
-                <span className="text-sm text-gray-600">{getStatusText(gateway.status)}</span>
-              </div>
-              
-              {/* PG Key */}
-              <div>
-                <span className="text-sm text-gray-500">PG Key:</span>
-                <span className="text-sm font-mono text-gray-900 ml-1">{gateway.identifier}</span>
+            <div className="flex flex-col">
+              <h3 className="font-semibold text-gray-900">{gateway.shortName}</h3>
+              <p className="text-sm text-gray-500">{gateway.name}</p>
+              <p className="text-xs text-gray-400">{gateway.description}</p>
+              <a href={gateway.website} target="_blank" rel="noreferrer" className="text-xs text-teal-600 hover:underline flex items-center space-x-1">
+                <GlobeAltIcon className="w-4 h-4" />
+                <span>{gateway.website.replace(/^https?:\/\//, '')}</span>
+              </a>
+
+              {/* Status & PG Key */}
+              <div className="flex items-center space-x-4 mt-1">
+                <div className="flex items-center space-x-2">
+                  <div className={`w-3 h-3 rounded-full ${getStatusColor(gateway.status)}`} />
+                  <span className="text-sm text-gray-600">{getStatusText(gateway.status)}</span>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-500">PG Key:</span>
+                  <span className="text-sm font-mono text-gray-900 ml-1">{gateway.identifier}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -99,15 +136,10 @@ const PaymentGatewayCard: React.FC<PaymentGatewayCardProps> = ({ gateway, viewMo
     );
   }
 
-  // Card view (default)
+  // Card view
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200 relative">
-      {/* Default Banner */}
-      {gateway.isDefault && (
-        <div className="absolute -top-2 -left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded transform -rotate-12">
-          Default
-        </div>
-      )}
+      
 
       {/* PG Logo and Info */}
       <div className="flex items-center justify-between mb-4">
@@ -121,14 +153,31 @@ const PaymentGatewayCard: React.FC<PaymentGatewayCardProps> = ({ gateway, viewMo
           </div>
           <div>
             <h3 className="font-semibold text-gray-900">{gateway.shortName}</h3>
-            <p className="text-sm text-gray-500">{gateway.identifier}</p>
+            <p className="text-sm text-gray-500">{gateway.name}</p>
+            <p className="text-xs text-gray-400">{gateway.description}</p>
           </div>
         </div>
 
         {/* Status Indicator */}
-        <div className="flex items-center space-x-2">
-          <div className={`w-3 h-3 rounded-full ${getStatusColor(gateway.status)}`}></div>
+        {/* <div className="flex items-center space-x-2">
+          <div className={`w-3 h-3 rounded-full ${getStatusColor(gateway.status)}`} />
           <span className="text-sm text-gray-600 capitalize">{getStatusText(gateway.status)}</span>
+        </div> */}
+      </div>
+
+      {/* Features & Supported Methods */}
+      <div className="mb-4">
+        <p className="text-sm font-medium text-gray-700">Supported Countries:</p>
+        <p className="text-xs text-gray-500">{gateway.supportedCountries.join(', ')}</p>
+
+        <p className="text-sm font-medium text-gray-700 mt-2">Payment Methods:</p>
+        <div className="flex flex-wrap gap-2 mt-1">
+          {gateway.supportedPaymentMethods.map((method) => (
+            <span key={method} className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded flex items-center space-x-1">
+              <CreditCardIcon className="w-3 h-3" />
+              <span>{method}</span>
+            </span>
+          ))}
         </div>
       </div>
 
@@ -137,7 +186,7 @@ const PaymentGatewayCard: React.FC<PaymentGatewayCardProps> = ({ gateway, viewMo
         <button className="p-2 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100">
           <Cog6ToothIcon className="w-5 h-5" />
         </button>
-        <button className="p-2 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100">
+        <button onClick={onEdit} className="p-2 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100">
           <ChevronRightIcon className="w-5 h-5" />
         </button>
       </div>
@@ -146,13 +195,3 @@ const PaymentGatewayCard: React.FC<PaymentGatewayCardProps> = ({ gateway, viewMo
 };
 
 export default PaymentGatewayCard;
-
-
-
-
-
-
-
-
-
-

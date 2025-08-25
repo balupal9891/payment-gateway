@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import Layout from './Layout';
 import { PlusIcon } from '@heroicons/react/24/outline';
 
 const NotificationsPage: React.FC = () => {
@@ -11,7 +10,7 @@ const NotificationsPage: React.FC = () => {
   };
 
   return (
-    <Layout>
+    <>
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-6xl mx-auto px-4">
           {/* Breadcrumb */}
@@ -124,7 +123,7 @@ const NotificationsPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </Layout>
+    </>
   );
 };
 

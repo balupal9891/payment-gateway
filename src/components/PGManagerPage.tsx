@@ -11,7 +11,6 @@ import {
   TrashIcon,
   ArrowTopRightOnSquareIcon
 } from '@heroicons/react/24/outline';
-import Layout from './Layout';
 
 // Types
 type PaymentGateway = {
@@ -158,7 +157,7 @@ const PGManagerPage: React.FC = () => {
   };
 
   return (
-    <Layout>
+    <>
       {/* Test Mode Banner */}
       <div className="bg-yellow-400 text-black px-4 py-2 mb-6 rounded-lg flex items-center justify-between">
         <span className="font-medium">You are viewing in test mode</span>
@@ -488,7 +487,7 @@ const PGManagerPage: React.FC = () => {
           </table>
         </div>
       )}
-    </Layout>
+    </>
   );
 };
 

@@ -8,9 +8,9 @@ import {
   BanknotesIcon,
   QrCodeIcon,
   WalletIcon,
-  TruckIcon
+  TruckIcon,
+  IdentificationIcon
 } from '@heroicons/react/24/outline';
-import Layout from './Layout';
 import { Bar, Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -26,6 +26,7 @@ import {
 } from 'chart.js';
 import { motion } from 'framer-motion';
 import { useMediaQuery } from 'react-responsive';
+import { useNavigate } from 'react-router-dom';
 
 // Register ChartJS components
 ChartJS.register(
@@ -67,6 +68,54 @@ type DashboardData = {
     cod: number;
   }[];
   recentTransactions: Transaction[];
+};
+
+// KYC Verification Component
+const KYCVerification = () => {
+  const navigate = useNavigate();
+  const isMobile = useMediaQuery({ maxWidth: 768 });
+
+  const handleCompleteKYC = () => {
+    // Redirect to onboarding page
+    navigate('/onboarding');
+  };
+
+  return (
+    <motion.div 
+      className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-6"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center space-x-3">
+          <div className="p-2 bg-yellow-100 rounded-lg">
+            <IdentificationIcon className="w-6 h-6 text-yellow-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Complete KYC Verification</h3>
+            <p className="text-sm text-gray-600">
+              Verify your identity to access all features and increase transaction limits.
+            </p>
+          </div>
+        </div>
+        
+        <motion.button
+          onClick={handleCompleteKYC}
+          className={`bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 ${
+            isMobile ? 'w-full mt-2' : ''
+          }`}
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.98 }}
+        >
+          <span>Complete KYC</span>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </motion.button>
+      </div>
+    </motion.div>
+  );
 };
 
 // Mock data with more realistic values
@@ -194,6 +243,7 @@ const getPaymentMethodIcon = (method: string) => {
 const DashboardHome: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState('30 days');
   const [loading, setLoading] = useState(true);
+  const [kycCompleted, setKycCompleted] = useState(false); // State to track KYC status
   const isMobile = useMediaQuery({ maxWidth: 768 });
 
   useEffect(() => {
@@ -271,16 +321,18 @@ const DashboardHome: React.FC = () => {
 
   if (loading) {
     return (
-      <Layout>
         <div className="flex items-center justify-center h-screen">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
         </div>
-      </Layout>
     );
   }
 
   return (
-    <Layout>
+    <>
+      
+      {/* KYC Verification Banner - Only show if KYC is not completed */}
+      {!kycCompleted && <KYCVerification />}
+      
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-6 pb-4 px-4 sm:px-6">
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
@@ -515,7 +567,7 @@ const DashboardHome: React.FC = () => {
           </motion.div>
         </div>
       </div>
-    </Layout>
+    </>
   );
 };
 
@@ -591,5 +643,5 @@ const TransactionCard: React.FC<{ transaction: Transaction }> = ({ transaction }
     </div>
   );
 };
-
+  
 export default DashboardHome;

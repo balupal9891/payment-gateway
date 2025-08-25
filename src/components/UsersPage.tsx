@@ -12,7 +12,6 @@ import {
   ChevronRightIcon,
   EllipsisHorizontalIcon
 } from '@heroicons/react/24/outline';
-import Layout from './Layout';
 
 interface User {
   id: number;
@@ -173,7 +172,7 @@ const UsersPage: React.FC = () => {
   };
 
   return (
-    <Layout>
+    <>
       {/* Page Title */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Manage Your Userbase</h1>
@@ -380,7 +379,7 @@ const UsersPage: React.FC = () => {
           </div>
         </div>
       )}
-    </Layout>
+      </>
   );
 };
 

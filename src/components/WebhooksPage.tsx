@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import Layout from './Layout';
 import { PlusIcon, ArrowUpIcon, EyeIcon, PencilIcon, TrashIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
 const WebhooksPage: React.FC = () => {
@@ -38,7 +37,7 @@ const WebhooksPage: React.FC = () => {
   };
 
   return (
-    <Layout>
+    <>
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-7xl mx-auto px-4">
           {/* Breadcrumb */}
@@ -198,7 +197,7 @@ const WebhooksPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </Layout>
+    </>
   );
 };
 

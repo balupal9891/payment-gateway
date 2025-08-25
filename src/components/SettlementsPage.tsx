@@ -9,14 +9,14 @@ import {
   CloudArrowDownIcon,
   DocumentDuplicateIcon
 } from '@heroicons/react/24/outline';
-import Layout from './Layout';
+
 
 const SettlementsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [itemsPerPage, setItemsPerPage] = useState(20);
 
   return (
-    <Layout>
+    <>
       {/* Page Title */}
       <div className="mb-6">
         <div className="bg-gray-100 inline-block px-4 py-2 rounded-lg">
@@ -139,7 +139,7 @@ const SettlementsPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </Layout>
+      </>
   );
 };
 

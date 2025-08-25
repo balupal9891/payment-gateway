@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useMode } from '../contexts/ModeContext';
+import { useMode } from '../store/slices/modeSlice';
 
 const ModeToggle: React.FC = () => {
-  const { mode, setMode } = useMode();
+  const {mode, setMode} = useMode();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -10,8 +10,8 @@ const ModeToggle: React.FC = () => {
     setIsOpen(!isOpen);
   };
 
-  const handleModeChange = (newMode: 'production' | 'test') => {
-    setMode(newMode);
+  const handleModeChange = (mode: 'production' | 'test') => {
+    setMode(mode);
     setIsOpen(false);
   };
 

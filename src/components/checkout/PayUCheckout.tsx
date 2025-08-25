@@ -27,39 +27,9 @@ const PaymentForm = () => {
     setError(null);
 
     // Basic validation
-    if (!formData.firstname || !formData.email || !formData.phone) {
-      setError('Please fill in all required fields');
-      setLoading(false);
-      return;
-    }
 
     try {
-      const response = await fetch('http://localhost:5000/api/payu/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData)
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create payment');
-      }
-
-      // Get the HTML response
-      const html = await response.text();
       
-      // Create a new window for PayU payment
-      const payuWindow = window.open('', '_blank');
-      if (payuWindow) {
-        payuWindow.document.write(html);
-        payuWindow.document.close();
-      } else {
-        throw new Error('Popup blocked. Please allow popups for this site.');
-      }
-    } catch (err) {
-      console.error('Payment error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to initiate payment');
     } finally {
       setLoading(false);
     }
@@ -137,7 +107,7 @@ const PaymentForm = () => {
             </div>
 
             {error && (
-              <div className="p-3 bg-red-100 text-red-700 rounded-md">
+              <div className="p-3 bg-teal-50 text-teal-700 border border-teal-500 rounded-md">
                 {error}
               </div>
             )}

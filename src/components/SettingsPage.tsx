@@ -8,7 +8,6 @@ import {
   Squares2X2Icon,
   ShieldCheckIcon
 } from '@heroicons/react/24/outline';
-import Layout from './Layout';
 
 const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -73,7 +72,7 @@ const SettingsPage: React.FC = () => {
   ];
 
   return (
-    <Layout>
+    <>
       {/* Page Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Account Settings</h1>
@@ -150,7 +149,7 @@ const SettingsPage: React.FC = () => {
           );
         })}
       </div>
-    </Layout>
+    </>
   );
 };
 

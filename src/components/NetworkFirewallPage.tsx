@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import Layout from './Layout';
 import { PlusIcon, PaperClipIcon } from '@heroicons/react/24/outline';
 
 const NetworkFirewallPage: React.FC = () => {
@@ -25,7 +24,6 @@ const NetworkFirewallPage: React.FC = () => {
   };
 
   return (
-    <Layout>
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-7xl mx-auto px-4">
           {/* Breadcrumb */}
@@ -183,7 +181,6 @@ const NetworkFirewallPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </Layout>
   );
 };
 

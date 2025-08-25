@@ -508,7 +508,7 @@ const PaymentGatewayForm = () => {
               onEndpointChange={(key, value) => updateNestedState(['production', 'endpoints', key], value)}
             />
 
-            <FloatingInput
+            {/* <FloatingInput
               id="webhookSecret"
               label="Webhook Secret"
               type="password"
@@ -516,7 +516,7 @@ const PaymentGatewayForm = () => {
               onChange={(val) => updateNestedState(['webhookSecret'], val)}
               className="sm:col-span-6"
               leftIcon={<Lock className="h-4 w-4 text-gray-400" />}
-            />
+            /> */}
 
             <div className="sm:col-span-6 flex items-center">
               <input

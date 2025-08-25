@@ -1,16 +1,29 @@
 import React, { useState } from 'react';
 import { CloudArrowUpIcon } from '@heroicons/react/24/outline';
-import Layout from './Layout';
 
 const PGCreatePage: React.FC = () => {
   const [formData, setFormData] = useState({
     pool: '',
-    pg: ''
+    pg: '',
+    apiKey: '',
+    apiSecret: '',
+    mid: '',
+    pgPriority: ''
   });
   const [errors, setErrors] = useState({
     pool: '',
-    pg: ''
+    pg: '',
+    apiKey: '',
+    apiSecret: '',
+    mid: ''
   });
+  const [isEnabled, setIsEnabled] = useState(true);
+  const [isSeamless, setIsSeamless] = useState(true);
+  const [isPayins, setIsPayins] = useState(true);
+  const [netBanking, setNetBanking] = useState(true);
+  const [card, setCard] = useState(true);
+  const [upi, setUpi] = useState(true);
+  const [wallets, setWallets] = useState(true);
 
   const pgPools = [
     { value: 'default', label: 'Default' },
@@ -39,7 +52,13 @@ const PGCreatePage: React.FC = () => {
   };
 
   const validateForm = () => {
-    const newErrors = { pool: '', pg: '' };
+    const newErrors = { 
+      pool: '', 
+      pg: '',
+      apiKey: '',
+      apiSecret: '',
+      mid: ''
+    };
     
     if (!formData.pool) {
       newErrors.pool = 'Please select a PG Pool';
@@ -47,6 +66,19 @@ const PGCreatePage: React.FC = () => {
     
     if (!formData.pg) {
       newErrors.pg = 'Please select a PG';
+    }
+
+    // Only validate credentials if PG is enabled and payins is checked
+    if (isEnabled && isPayins) {
+      if (!formData.apiKey) {
+        newErrors.apiKey = 'API Key is required';
+      }
+      if (!formData.apiSecret) {
+        newErrors.apiSecret = 'API Secret is required';
+      }
+      if (!formData.mid) {
+        newErrors.mid = 'MID is required';
+      }
     }
 
     setErrors(newErrors);
@@ -57,14 +89,24 @@ const PGCreatePage: React.FC = () => {
     e.preventDefault();
     if (validateForm()) {
       // Handle form submission here
-      console.log('Form submitted:', formData);
+      console.log('Form submitted:', {
+        ...formData,
+        isEnabled,
+        isSeamless,
+        isPayins,
+        paymentMethods: {
+          netBanking,
+          card,
+          upi,
+          wallets
+        }
+      });
       // You can add API call here to create the PG
     }
   };
 
   return (
-    <Layout>
-      {/* Test Mode Banner */}
+    <>
       <div className="bg-yellow-400 text-black px-4 py-2 mb-6 rounded-lg flex items-center justify-between">
         <span className="font-medium">You are viewing in test mode</span>
         <div className="flex items-center space-x-3">
@@ -150,6 +192,226 @@ const PGCreatePage: React.FC = () => {
             </div>
           </div>
 
+          {/* Status Toggle */}
+          {formData.pg && <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium text-gray-900">PG Status</h3>
+                <p className="text-sm text-gray-500">
+                  {isEnabled ? 'This PG will be active and available for transactions' : 'This PG will be disabled and unavailable'}
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={isEnabled} 
+                  onChange={() => setIsEnabled(!isEnabled)} 
+                  className="sr-only peer" 
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                <span className="ml-3 text-sm font-medium text-gray-900">
+                  {isEnabled ? 'Enabled' : 'Disabled'}
+                </span>
+              </label>
+            </div>
+          </div>}
+
+          {/* Only show additional options if PG is enabled */}
+          {formData.pg && isEnabled && (
+            <>
+              {/* Features Toggles */}
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium text-gray-900">Seamless Payments</h3>
+                      <p className="text-sm text-gray-500">
+                        Enable if this PG supports seamless payment processing
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={isSeamless} 
+                        onChange={() => setIsSeamless(!isSeamless)} 
+                        className="sr-only peer" 
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium text-gray-900">Payins</h3>
+                      <p className="text-sm text-gray-500">
+                        Enable to configure payment processing credentials
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={isPayins} 
+                        onChange={() => setIsPayins(!isPayins)} 
+                        className="sr-only peer" 
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payins Section - Only show if payins is enabled */}
+              {isPayins && (
+                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                  <h3 className="font-medium text-gray-900 mb-3">Payins Credentials</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                      <input 
+                        type="text" 
+                        value={formData.apiKey}
+                        onChange={(e) => handleInputChange('apiKey', e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          errors.apiKey ? 'border-red-500' : 'border-gray-300 focus:border-blue-500'
+                        }`}
+                        placeholder="Enter API Key"
+                      />
+                      {errors.apiKey && (
+                        <p className="text-red-500 text-sm mt-1">{errors.apiKey}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">API Secret</label>
+                      <input 
+                        type="text" 
+                        value={formData.apiSecret}
+                        onChange={(e) => handleInputChange('apiSecret', e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          errors.apiSecret ? 'border-red-500' : 'border-gray-300 focus:border-blue-500'
+                        }`}
+                        placeholder="Enter API Secret"
+                      />
+                      {errors.apiSecret && (
+                        <p className="text-red-500 text-sm mt-1">{errors.apiSecret}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">MID</label>
+                      <input 
+                        type="text" 
+                        value={formData.mid}
+                        onChange={(e) => handleInputChange('mid', e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          errors.mid ? 'border-red-500' : 'border-gray-300 focus:border-blue-500'
+                        }`}
+                        placeholder="Enter Merchant ID"
+                      />
+                      {errors.mid && (
+                        <p className="text-red-500 text-sm mt-1">{errors.mid}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">PG Priority</label>
+                      <input 
+                        type="number" 
+                        value={formData.pgPriority}
+                        onChange={(e) => handleInputChange('pgPriority', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter priority number"
+                        min="1"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Payment Methods (Seamless) - Only show if seamless is enabled */}
+              {isSeamless && (
+  <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+    <h3 className="font-medium text-gray-900 mb-3">Supported Payment Methods</h3>
+    <div className="flex flex-wrap gap-6">
+      
+      {/* Net Banking */}
+      <label className="relative inline-flex items-center cursor-pointer">
+        <input
+          type="checkbox"
+          checked={netBanking}
+          onChange={() => setNetBanking(!netBanking)}
+          className="sr-only peer"
+        />
+        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600
+                        peer-focus:ring-4 peer-focus:ring-blue-300
+                        after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+                        after:bg-white after:border-gray-300 after:border
+                        after:rounded-full after:h-5 after:w-5 after:transition-all
+                        peer-checked:after:translate-x-full peer-checked:after:border-white">
+        </div>
+        <span className="ml-3 text-gray-700">Net Banking</span>
+      </label>
+
+      {/* Card */}
+      <label className="relative inline-flex items-center cursor-pointer">
+        <input
+          type="checkbox"
+          checked={card}
+          onChange={() => setCard(!card)}
+          className="sr-only peer"
+        />
+        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600
+                        peer-focus:ring-4 peer-focus:ring-blue-300
+                        after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+                        after:bg-white after:border-gray-300 after:border
+                        after:rounded-full after:h-5 after:w-5 after:transition-all
+                        peer-checked:after:translate-x-full peer-checked:after:border-white">
+        </div>
+        <span className="ml-3 text-gray-700">Card</span>
+      </label>
+
+      {/* UPI */}
+      <label className="relative inline-flex items-center cursor-pointer">
+        <input
+          type="checkbox"
+          checked={upi}
+          onChange={() => setUpi(!upi)}
+          className="sr-only peer"
+        />
+        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600
+                        peer-focus:ring-4 peer-focus:ring-blue-300
+                        after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+                        after:bg-white after:border-gray-300 after:border
+                        after:rounded-full after:h-5 after:w-5 after:transition-all
+                        peer-checked:after:translate-x-full peer-checked:after:border-white">
+        </div>
+        <span className="ml-3 text-gray-700">UPI</span>
+      </label>
+
+      {/* Wallets */}
+      <label className="relative inline-flex items-center cursor-pointer">
+        <input
+          type="checkbox"
+          checked={wallets}
+          onChange={() => setWallets(!wallets)}
+          className="sr-only peer"
+        />
+        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600
+                        peer-focus:ring-4 peer-focus:ring-blue-300
+                        after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+                        after:bg-white after:border-gray-300 after:border
+                        after:rounded-full after:h-5 after:w-5 after:transition-all
+                        peer-checked:after:translate-x-full peer-checked:after:border-white">
+        </div>
+        <span className="ml-3 text-gray-700">Wallets</span>
+      </label>
+
+    </div>
+  </div>
+)}
+
+            </>
+          )}
+
           {/* Payment Gateway Details (shown when PG is selected) */}
           {formData.pg && (
             <div className="mt-6 p-4 bg-gray-50 rounded-lg">
@@ -173,7 +435,13 @@ const PGCreatePage: React.FC = () => {
           )}
 
           {/* Action Buttons */}
-          <div className="flex justify-end mt-8">
+          <div className="flex justify-end mt-8 space-x-3">
+            <button
+              type="button"
+              className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
             <button
               type="submit"
               className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md flex items-center space-x-2 transition-colors"
@@ -184,9 +452,8 @@ const PGCreatePage: React.FC = () => {
           </div>
         </form>
       </div>
-    </Layout>
+      </>
   );
 };
 
 export default PGCreatePage;
-

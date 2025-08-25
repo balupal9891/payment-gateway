@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FiSearch, FiPlus, FiDownload, FiChevronRight } from 'react-icons/fi';
 import { motion } from 'framer-motion';
-import Layout from './Layout';
+import CreatePaymentLinkModal, { type CreatePaymentLinkPayload } from './CreatePaymentLinkModal';
 
 interface PaymentLink {
   id: number;
@@ -19,6 +19,7 @@ const PaymentLinksPage = () => {
   const [paymentLinks, setPaymentLinks] = useState<PaymentLink[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Load dummy data
   useEffect(() => {
@@ -82,38 +83,33 @@ const PaymentLinksPage = () => {
     (link.phone && link.phone.includes(searchQuery))
   ) || null;
 
-  const toggleDataState = () => {
-    if (paymentLinks === null) {
-      setPaymentLinks([
-        {
-          id: 1,
-          name: 'Sample Data',
-          email: 'sample@example.com',
-          phone: '1234567890',
-          amount: 1000,
-          receiptId: 'SAMPLE001',
-          expiryStatus: 'Active',
-          paymentStatus: 'Paid',
-          createdAt: '2023-12-10'
-        }
-      ]);
-    } else {
-      setPaymentLinks(null);
-    }
+  const handleCreateLink = (payload: CreatePaymentLinkPayload) => {
+    const newItem: PaymentLink = {
+      id: (paymentLinks?.[0]?.id || 0) + Math.floor(Math.random() * 1000) + 1,
+      name: payload.name,
+      email: payload.email,
+      phone: payload.phone,
+      amount: payload.amount,
+      receiptId: payload.receiptId,
+      expiryStatus: payload.expiry ? 'Active' : 'Active',
+      paymentStatus: 'Pending',
+      createdAt: new Date().toISOString().slice(0, 10)
+    };
+    setPaymentLinks(prev => (prev ? [newItem, ...prev] : [newItem]));
   };
 
   if (loading) {
     return (
-      <Layout>
+      <>
         <div className="flex justify-center items-center h-screen">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
         </div>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
+    <>
       <div className="p-6 max-w-7xl mx-auto">
         {/* Header Section */}
         <div className="mb-8">
@@ -158,10 +154,10 @@ const PaymentLinksPage = () => {
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.98 }}
               className="flex items-center px-4 py-2 bg-teal-500 text-white rounded-md shadow-sm hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500"
-              onClick={toggleDataState}
+              onClick={() => setShowCreateModal(true)}
             >
               <FiPlus className="mr-2" />
-              {paymentLinks ? 'Add Payment Link' : 'Create Sample Data'}
+              Add Payment Link
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.03 }}
@@ -252,7 +248,7 @@ const PaymentLinksPage = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
                 className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onClick={toggleDataState}
+                onClick={() => setShowCreateModal(true)}
               >
                 <FiPlus className="mr-2" />
                 Create Payment Link
@@ -261,7 +257,13 @@ const PaymentLinksPage = () => {
           </motion.div>
         )}
       </div>
-    </Layout>
+
+      <CreatePaymentLinkModal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreate={handleCreateLink}
+      />
+    </>
   );
 };
 

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import Layout from './Layout';
 import { ArrowLeftIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
 const EditUserPage: React.FC = () => {
@@ -48,7 +47,6 @@ const EditUserPage: React.FC = () => {
   };
 
   return (
-    <Layout>
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-4xl mx-auto px-4">
           {/* Breadcrumb */}
@@ -371,7 +369,6 @@ const EditUserPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </Layout>
   );
 };
 
