@@ -1,5 +1,5 @@
 import React, { type ReactNode } from 'react';
-import Sidebar from '../Sidebar';
+import Sidebar from '../sidebar/Sidebar';
 import Header from '../Header';
 import { Outlet } from 'react-router-dom';
 

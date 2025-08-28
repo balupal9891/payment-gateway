@@ -11,39 +11,44 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "@heroicons/react/24/outline";
+import { useUser } from "../../store/slices/userSlice";
 
 interface SidebarProps {
   className?: string;
-  role?: "admin" | "vendor";
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ className = "", role = "admin" }) => {
+const Sidebar: React.FC<SidebarProps> = ({ className = "" }) => {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user } = useUser();
+  console.log(user)
 
   // Role-based nav items
-  const navConfig = {
-    admin: [
-      { path: "/dashboard", icon: HomeIcon, label: "Home" },
-      { path: "/transactions", icon: DocumentTextIcon, label: "Transactions" },
-      { path: "/settlements", icon: CurrencyDollarIcon, label: "Settlements" },
-      { path: "/links", icon: LinkIcon, label: "Links" },
-      { path: "/users", icon: UserGroupIcon, label: "Users" },
-      { path: "/payment-gateways", icon: CurrencyDollarIcon, label: "Payment Gateways" },
-      { path: "/settings", icon: Cog6ToothIcon, label: "Settings" },
-    ],
-    vendor: [
-      { path: "/dashboard", icon: HomeIcon, label: "Home" },
-      { path: "/transactions", icon: DocumentTextIcon, label: "Transactions" },
-      { path: "/settlements", icon: CurrencyDollarIcon, label: "Settlements" },
-      { path: "/links", icon: LinkIcon, label: "Links" },
-      { path: "/users", icon: UserGroupIcon, label: "Users" },
-      { path: "/settings", icon: Cog6ToothIcon, label: "Settings" },
-    ],
-  };
+  const role = user?.role?.roleName || "Vendor";
+  let navItems = [];
 
-  const navItems = navConfig[role] || navConfig.vendor;
+  if(role == "Super Admin" || role == "Admin"){
+     navItems = [
+      { path: "/dashboard", icon: HomeIcon, label: "Home" },
+      { path: "/transactions", icon: DocumentTextIcon, label: "Transactions" },
+      { path: "/settlements", icon: CurrencyDollarIcon, label: "Settlements" },
+      // { path: "/links", icon: LinkIcon, label: "Links" },
+      { path: "/admin/vendors", icon: UserGroupIcon, label: "Vendors" },
+      { path: "/payment-gateways", icon: CurrencyDollarIcon, label: "Payment Gateways" },
+      // { path: "/settings", icon: Cog6ToothIcon, label: "Settings" },
+    ]
+  }
+  else{
+    navItems = [
+      { path: "/dashboard", icon: HomeIcon, label: "Home" },
+      { path: "/transactions", icon: DocumentTextIcon, label: "Transactions" },
+      { path: "/settlements", icon: CurrencyDollarIcon, label: "Settlements" },
+      { path: "/links", icon: LinkIcon, label: "Links" },
+      { path: "/users", icon: UserGroupIcon, label: "Users" },
+      { path: "/settings", icon: Cog6ToothIcon, label: "Settings" },
+    ]
+  }
 
   const isActive = (path: string) => {
     if (path === "/dashboard") {

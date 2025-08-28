@@ -1,4 +1,6 @@
-// const baseURL="http://3.111.23.150:8080/api";
-const baseURL: string = "https://api.motifesim.com/api";
+
+const baseURL: string = "http://152.42.157.14:3300/api/v1";
+// const baseURL: string = "http://localhost:4200/api/v1";
+
 
 export default baseURL;

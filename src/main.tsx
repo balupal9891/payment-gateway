@@ -29,50 +29,59 @@ import { Provider, useDispatch } from "react-redux";
 import { store } from "./store/store";
 import VendorKYCForm from './components/vendor/vendorKycForm.tsx';
 import StripeCheckout from './components/checkout/StripeCheckout.tsx';
+import VendorRegistration from './components/admin/vendor/VendorRegistration.tsx';
+import VendorManagement from './components/admin/vendor/VendorManagement.tsx';
+import ProtectedRoute from './components/ProtectedRoute.tsx';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Provider store={store}>
-        <BrowserRouter>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/payu" element={<PaymentForm />} />
-            <Route path="/success" element={<SuccessPage />} />
-            <Route path="/cancel" element={<CancelledPage />} />
-            <Route path="/onboarding" element={<VendorKYCForm />} />
+      <BrowserRouter>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/payu" element={<PaymentForm />} />
+          <Route path="/success" element={<SuccessPage />} />
+          <Route path="/cancel" element={<CancelledPage />} />
+          <Route path="/onboarding" element={<VendorKYCForm />} />
 
-            {/* Protected routes */}
+          {/* Protected routes */}
+          <Route path='/admin' element={<Layout />}>
 
-            {/* Dashboard (protected) routes with Layout */}
-            <Route element={<Layout />}>
-              <Route path="/" element={<DashboardHome />} />
-              <Route path="/dashboard" element={<DashboardHome />} />
-              <Route path="/transactions" element={<TransactionsPage />} />
-              <Route path="/settlements" element={<SettlementsPage />} />
-              <Route path="/users" element={<UsersPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/settings/profile" element={<EditUserPage />} />
-              <Route path="/settings/notifications" element={<NotificationsPage />} />
-              <Route path="/settings/webhooks" element={<WebhooksPage />} />
-              <Route path="/settings/network-firewall" element={<NetworkFirewallPage />} />
-              <Route path="/settings/pg" element={<PGManagerPage />} />
-              <Route path="/pg/create" element={<PGCreatePage />} />
-              <Route path="/links" element={<PaymentLinks />} />
-              <Route path="/payment-gateways" element={<PaymentGatewaysPage />} />
-              <Route path="/payment-gateways/new" element={<PaymentGatewayForm />} />
-              <Route path="/payment-gateways/:id" element={<PaymentGatewayForm />} />
-            </Route>
+            <Route path="vendor-registration" element={<VendorRegistration />} />
+            <Route path="vendors" element={<VendorManagement />} />
+            {/* <Route path="/admin/vendor/registration" element={<VendorRegistration />} /> */}
+          </Route>
 
-            <Route path="/stripecheckout" element={<StripeCheckout />} />
+          {/* Dashboard (protected) routes with Layout */}
+          <Route element={<Layout />}>
+            <Route path="/" element={<ProtectedRoute><DashboardHome /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<DashboardHome />} />
+            <Route path="/transactions" element={<TransactionsPage />} />
+            <Route path="/settlements" element={<SettlementsPage />} />
+            <Route path="/users" element={<UsersPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings/profile" element={<EditUserPage />} />
+            <Route path="/settings/notifications" element={<NotificationsPage />} />
+            <Route path="/settings/webhooks" element={<WebhooksPage />} />
+            <Route path="/settings/network-firewall" element={<NetworkFirewallPage />} />
+            <Route path="/settings/pg" element={<PGManagerPage />} />
+            <Route path="/pg/create" element={<PGCreatePage />} />
+            <Route path="/links" element={<PaymentLinks />} />
+            <Route path="/payment-gateways" element={<PaymentGatewaysPage />} />
+            <Route path="/payment-gateways/new" element={<PaymentGatewayForm />} />
+            <Route path="/payment-gateways/:id" element={<PaymentGatewayForm />} />
+          </Route>
+
+          <Route path="/stripecheckout" element={<StripeCheckout />} />
 
 
-            {/* 404 Not Found (optional) */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </Provider>
+          {/* 404 Not Found (optional) */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </Provider>
   </StrictMode>
 );
 

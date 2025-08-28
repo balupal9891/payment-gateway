@@ -106,12 +106,12 @@ const TextInput: React.FC<TextInputProps> = ({
 }) => {
     return (
         <div className="mb-6 relative">
-            <label className="block mb-2 font-medium text-purple-800">
+            <label className="block mb-2 font-medium text-teal-800">
                 {label} {required && "*"}
             </label>
             <div className="relative">
                 {icon && (
-                    <div className="absolute left-3 top-3 text-purple-500">
+                    <div className="absolute left-3 top-3 text-teal-500">
                         {icon}
                     </div>
                 )}
@@ -122,7 +122,7 @@ const TextInput: React.FC<TextInputProps> = ({
                     onChange={onChange}
                     placeholder={placeholder}
                     required={required}
-                    className={`w-full p-2 border-2 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 ${error ? "border-red-500" : "border-purple-200"} ${icon ? 'pl-10' : ''} ${className}`}
+                    className={`w-full p-2 border-2 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 ${error ? "border-red-500" : "border-teal-200"} ${icon ? 'pl-10' : ''} ${className}`}
                 />
             </div>
             {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
@@ -143,12 +143,12 @@ const TextareaInput: React.FC<TextareaInputProps> = ({
 }) => {
     return (
         <div className="mb-6 relative">
-            <label className="block mb-2 font-medium text-purple-800">
+            <label className="block mb-2 font-medium text-teal-800">
                 {label} {required && "*"}
             </label>
             <div className="relative">
                 {icon && (
-                    <div className="absolute left-3 top-3 text-purple-500">
+                    <div className="absolute left-3 top-3 text-teal-500">
                         {icon}
                     </div>
                 )}
@@ -158,7 +158,7 @@ const TextareaInput: React.FC<TextareaInputProps> = ({
                     onChange={onChange}
                     rows={rows}
                     required={required}
-                    className={`w-full p-2 border-2 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-y ${error ? "border-red-500" : "border-purple-200"} ${icon ? 'pl-10' : ''} ${className}`}
+                    className={`w-full p-2 border-2 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-y ${error ? "border-red-500" : "border-teal-200"} ${icon ? 'pl-10' : ''} ${className}`}
                 />
             </div>
             {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
@@ -178,12 +178,12 @@ const SelectInput: React.FC<SelectInputProps> = ({
 }) => {
     return (
         <div className="mb-6 relative">
-            <label className="block mb-2 font-medium text-purple-800">
+            <label className="block mb-2 font-medium text-teal-800">
                 {label} {required && "*"}
             </label>
             <div className="relative">
                 {icon && (
-                    <div className="absolute left-3 top-3 text-purple-500 z-10">
+                    <div className="absolute left-3 top-3 text-teal-500 z-10">
                         {icon}
                     </div>
                 )}
@@ -192,7 +192,7 @@ const SelectInput: React.FC<SelectInputProps> = ({
                     value={value}
                     onChange={onChange}
                     required={required}
-                    className={`w-full p-2 border-2 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white ${error ? "border-red-500" : "border-purple-200"} ${icon ? 'pl-10' : ''}`}
+                    className={`w-full p-2 border-2 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white ${error ? "border-red-500" : "border-teal-200"} ${icon ? 'pl-10' : ''}`}
                 >
                     <option value="">Select an option</option>
                     {options.map((opt) => (
@@ -219,11 +219,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
 }) => {
     return (
         <div className="mb-6">
-            <label className="block mb-2 font-medium text-purple-800">
+            <label className="block mb-2 font-medium text-teal-800">
                 {label} {required && "*"}
             </label>
             <div
-                className={`border-2 border-dashed rounded-lg p-5 text-center transition-colors ${file ? "bg-green-50 border-green-400" : "bg-purple-50 border-purple-300"
+                className={`border-2 border-dashed rounded-lg p-5 text-center transition-colors ${file ? "bg-green-50 border-green-400" : "bg-teal-50 border-teal-300"
                     } ${error ? "border-red-500" : ""}`}
             >
                 <input
@@ -236,10 +236,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
                     className="absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0"
                 />
                 <label htmlFor={name} className="flex flex-col items-center cursor-pointer">
-                    <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-full mb-3">
-                        {icon || <Upload size={24} className="text-purple-600" />}
+                    <div className="flex items-center justify-center w-12 h-12 bg-teal-100 rounded-full mb-3">
+                        {icon || <Upload size={24} className="text-teal-600" />}
                     </div>
-                    <span className="text-purple-600 font-medium">
+                    <span className="text-teal-600 font-medium">
                         {file ? file.name : `Click to upload ${label}`}
                     </span>
                     <span className="text-gray-600 text-sm mt-1">
@@ -433,23 +433,30 @@ const VendorKYCForm = () => {
 
     const prevStep = () => setStep(step - 1);
 
+    const goToStep = (stepNumber: number) => {
+        // Only allow navigation to completed steps or the next step
+        if (stepNumber <= step) {
+            setStep(stepNumber);
+        }
+    };
+
     const stepIcons = [
-        { icon: <Building size={20} />, label: "Business", color: "bg-purple-500" },
-        { icon: <Globe size={20} />, label: "Website", color: "bg-blue-500" },
-        { icon: <FileText size={20} />, label: "Documents", color: "bg-green-500" },
+        { icon: <Building size={20} />, label: "Business", color: "bg-teal-500" },
+        { icon: <Globe size={20} />, label: "Website", color: "bg-teal-500" },
+        { icon: <FileText size={20} />, label: "Documents", color: "bg-teal-500" },
         { icon: <CreditCard size={20} />, label: "Bank", color: "bg-teal-500" }
     ];
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-10 px-4 font-sans relative">
+        <div className="min-h-screen bg-gradient-to-br from-teal-50 to-indigo-100 py-10 px-4 font-sans relative">
             {/* Decorative elements */}
-            <div className="absolute top-0 right-0 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
+            <div className="absolute top-0 right-0 w-72 h-72 bg-teal-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
             <div className="absolute top-0 left-0 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
             <div className="absolute bottom-0 right-0 w-72 h-72 bg-teal-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
             
             <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden relative z-10">
                 {/* Header with gradient */}
-                <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-white">
+                <div className="bg-gradient-to-r from-teal-600 to-indigo-600 p-6 text-white">
                     <div className="flex items-center justify-between">
                         <div>
                             <h1 className="text-3xl font-bold mb-2">Vendor KYC Verification</h1>
@@ -467,9 +474,14 @@ const VendorKYCForm = () => {
                         {stepIcons.map((stepIcon, i) => (
                             <div key={i} className="flex flex-col items-center flex-1 relative">
                                 <div className="flex flex-col items-center">
-                                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold mb-2 relative z-10 text-white ${step >= i + 1 ? stepIcon.color : 'bg-gray-300'}`}>
+                                    <button
+                                        type="button"
+                                        onClick={() => goToStep(i + 1)}
+                                        className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold mb-2 relative z-10 text-white ${step >= i + 1 ? stepIcon.color : 'bg-gray-300'} ${i + 1 <= step ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                                        disabled={i + 1 > step}
+                                    >
                                         {step > i + 1 ? <Check size={24} /> : stepIcon.icon}
-                                    </div>
+                                    </button>
                                     <span className={`text-sm font-medium ${step >= i + 1 ? 'text-gray-800' : 'text-gray-500'}`}>{stepIcon.label}</span>
                                 </div>
                                 {i < stepIcons.length - 1 && (
@@ -519,7 +531,7 @@ const VendorKYCForm = () => {
                                     icon={<MapPin size={18} />}
                                 />
                                 <div className="flex justify-end mt-8">
-                                    <button type="button" onClick={nextStep} className="flex items-center bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg">
+                                    <button type="button" onClick={nextStep} className="flex items-center bg-gradient-to-r from-teal-600 to-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-teal-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg">
                                         Next <ArrowRight size={18} className="ml-2" />
                                     </button>
                                 </div>
@@ -551,7 +563,7 @@ const VendorKYCForm = () => {
                                     <button type="button" onClick={prevStep} className="flex items-center bg-gray-100 text-gray-700 py-3 px-6 rounded-lg font-semibold hover:bg-gray-200 transition-colors">
                                         <ArrowLeft size={18} className="mr-2" /> Back
                                     </button>
-                                    <button type="button" onClick={nextStep} className="flex items-center bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg">
+                                    <button type="button" onClick={nextStep} className="flex items-center bg-gradient-to-r from-teal-600 to-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-teal-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg">
                                         Next <ArrowRight size={18} className="ml-2" />
                                     </button>
                                 </div>
@@ -618,7 +630,7 @@ const VendorKYCForm = () => {
                                     <button type="button" onClick={prevStep} className="flex items-center bg-gray-100 text-gray-700 py-3 px-6 rounded-lg font-semibold hover:bg-gray-200 transition-colors">
                                         <ArrowLeft size={18} className="mr-2" /> Back
                                     </button>
-                                    <button type="button" onClick={nextStep} className="flex items-center bg-gradient-to-r from-green-600 to-teal-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-green-700 hover:to-teal-700 transition-all shadow-md hover:shadow-lg">
+                                    <button type="button" onClick={nextStep} className="flex items-center bg-gradient-to-r from-teal-600 to-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-teal-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg">
                                         Next <ArrowRight size={18} className="ml-2" />
                                     </button>
                                 </div>
@@ -678,7 +690,7 @@ const VendorKYCForm = () => {
                                     <button type="button" onClick={prevStep} className="flex items-center bg-gray-100 text-gray-700 py-3 px-6 rounded-lg font-semibold hover:bg-gray-200 transition-colors">
                                         <ArrowLeft size={18} className="mr-2" /> Back
                                     </button>
-                                    <button type="submit" className="flex items-center bg-gradient-to-r from-teal-600 to-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-teal-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg">
+                                    <button type="submit" className="flex items-center bg-gradient-to-r from-teal-600 to-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-teal-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg">
                                         Submit KYC <Check size={18} className="ml-2" />
                                     </button>
                                 </div>

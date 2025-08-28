@@ -1,26 +1,21 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import Cookies from "js-cookie";
+import type { AppDispatch, RootState } from "../store";
+import { useSelector, useDispatch } from "react-redux";
 
 export interface UserProfile {
   id?: string;
   name?: string;
   email?: string;
-  vendorId?: string;
-  [key: string]: any; // if backend sends more
+  mobile?: string;
+  [key: string]: any; 
 }
+const savedUser = Cookies.get("user");
 
-interface UserState {
-  user: UserProfile | null;
-  loading: boolean;
-  currency: string;
-  mode?: 'test' | 'live';
-}
-
-const initialState: UserState = {
-  user: null,
+const initialState = {
+  user: savedUser ? JSON.parse(savedUser) : null,
   loading: true,
   currency: "₹",
-  
 };
 
 const userSlice = createSlice({
@@ -36,18 +31,14 @@ const userSlice = createSlice({
       }>
     ) => {
       const { profile, accessToken, refreshToken } = action.payload;
+      console.log(profile, accessToken, refreshToken);
 
       state.user = profile;
 
-      // ✅ Persist to localStorage
-      Cookies.set("user", JSON.stringify(profile), { expires: 7 }); // 7 days
-      Cookies.set("accessToken", accessToken, { expires: 7 });
-      Cookies.set("refreshToken", refreshToken, { expires: 7 });
-      if (profile.vendorId) {
-        Cookies.set("vendorId", profile.vendorId, { expires: 7 });
-      }
+      Cookies.set("user", JSON.stringify(profile));
+      Cookies.set("accessToken", accessToken);
+      Cookies.set("refreshToken", refreshToken);
 
-      // ✅ Sync global tokens
       (window as any).authToken = accessToken;
       (window as any).refreshToken = refreshToken;
     },
@@ -77,16 +68,44 @@ const userSlice = createSlice({
       Cookies.remove("user");
       Cookies.remove("accessToken");
       Cookies.remove("refreshToken");
-      Cookies.remove("vendorId");
 
       (window as any).authToken = null;
       (window as any).refreshToken = null;
+      
     },
     setCurrency: (state, action: PayloadAction<string>) => {
       state.currency = action.payload;
     },
   },
 });
+
+export const useUser = () => {
+  const dispatch: AppDispatch = useDispatch();
+
+  const { user, loading, currency } = useSelector(
+    (state: RootState) => state.user
+  );
+
+  return {
+    user,
+    loading,
+    currency,
+
+    setUserInStore: (payload: {
+      profile: UserProfile;
+      accessToken: string;
+      refreshToken: string;
+    }) => dispatch(setUserInStore(payload)),
+
+    setUserFromStorage: () => dispatch(setUserFromStorage()),
+
+    updateUser: (data: Partial<UserProfile>) => dispatch(updateUser(data)),
+
+    logout: () => dispatch(logout()),
+
+    setCurrency: (c: string) => dispatch(setCurrency(c)),
+  };
+};
 
 export const {
   setUserInStore,

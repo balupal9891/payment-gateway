@@ -327,6 +327,71 @@ const PGCreatePage: React.FC = () => {
                 </div>
               )}
 
+              {/* test Section - Only show if payins is enabled */}
+              {isPayins && (
+                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                  <h3 className="font-medium text-gray-900 mb-3">Sandbox Credentials</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                      <input 
+                        type="text" 
+                        value={formData.apiKey}
+                        onChange={(e) => handleInputChange('apiKey', e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          errors.apiKey ? 'border-red-500' : 'border-gray-300 focus:border-blue-500'
+                        }`}
+                        placeholder="Enter API Key"
+                      />
+                      {errors.apiKey && (
+                        <p className="text-red-500 text-sm mt-1">{errors.apiKey}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">API Secret</label>
+                      <input 
+                        type="text" 
+                        value={formData.apiSecret}
+                        onChange={(e) => handleInputChange('apiSecret', e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          errors.apiSecret ? 'border-red-500' : 'border-gray-300 focus:border-blue-500'
+                        }`}
+                        placeholder="Enter API Secret"
+                      />
+                      {errors.apiSecret && (
+                        <p className="text-red-500 text-sm mt-1">{errors.apiSecret}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">MID</label>
+                      <input 
+                        type="text" 
+                        value={formData.mid}
+                        onChange={(e) => handleInputChange('mid', e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          errors.mid ? 'border-red-500' : 'border-gray-300 focus:border-blue-500'
+                        }`}
+                        placeholder="Enter Merchant ID"
+                      />
+                      {errors.mid && (
+                        <p className="text-red-500 text-sm mt-1">{errors.mid}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">PG Priority</label>
+                      <input 
+                        type="number" 
+                        value={formData.pgPriority}
+                        onChange={(e) => handleInputChange('pgPriority', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter priority number"
+                        min="1"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Payment Methods (Seamless) - Only show if seamless is enabled */}
               {isSeamless && (
   <div className="mt-6 p-4 bg-gray-50 rounded-lg">
