@@ -29,7 +29,7 @@ const StripeCheckout = () => {
     
     try {
       // Your Stripe checkout logic will go here
-      const response = await fetch("http://localhost:5000/api/stripe/createStripeSession", {
+      const response = await fetch("http://localhost:4200/api/v1/stripe/createStripeSession", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

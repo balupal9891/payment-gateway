@@ -15,7 +15,7 @@ import EditUserPage from './components/EditUserPage.tsx';
 import NotificationsPage from './components/NotificationsPage.tsx';
 import WebhooksPage from './components/WebhooksPage.tsx';
 import PGManagerPage from './components/PGManagerPage.tsx';
-import PGCreatePage from './components/PGCreatePage.tsx';
+import VendorCredentialsPage from './components/PGCreatePage.tsx';
 import PaymentLinks from './components/LinksPage.tsx';
 import PaymentGatewaysPage from './components/PaymentGatewaysPage';
 import PaymentGatewayForm from './components/PaymentGatewayForm';
@@ -67,7 +67,8 @@ createRoot(document.getElementById('root')!).render(
             <Route path="/settings/webhooks" element={<WebhooksPage />} />
             <Route path="/settings/network-firewall" element={<NetworkFirewallPage />} />
             <Route path="/settings/pg" element={<PGManagerPage />} />
-            <Route path="/pg/create" element={<PGCreatePage />} />
+            <Route path="/pg/create" element={<VendorCredentialsPage />} />
+<Route path="/pg/update/:gatewayId" element={<VendorCredentialsPage />} />
             <Route path="/links" element={<PaymentLinks />} />
             <Route path="/payment-gateways" element={<PaymentGatewaysPage />} />
             <Route path="/payment-gateways/new" element={<PaymentGatewayForm />} />

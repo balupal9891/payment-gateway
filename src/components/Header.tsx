@@ -39,7 +39,7 @@ const Header: React.FC<HeaderProps> = ({
         {/* Logo */}
         <div className="flex items-center">
           <div className="font-bold text-2xl bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent tracking-tight">
-            MotifPay
+            MotifPe
           </div>
         </div>
 

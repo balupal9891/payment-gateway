@@ -1,493 +1,514 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Search, List, Grid, Plus, X, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { 
-  MagnifyingGlassIcon,
-  ListBulletIcon,
-  Squares2X2Icon,
-  PlusIcon,
-  ArrowPathIcon,
-  EllipsisVerticalIcon,
-  PencilIcon,
-  TrashIcon,
-  ArrowTopRightOnSquareIcon
-} from '@heroicons/react/24/outline';
+import axios from 'axios';
+import baseURL from '../API/baseUrl';
+import Cookies from 'js-cookie';
+import { useNavigate } from 'react-router-dom';
 
-// Types
-type PaymentGateway = {
-  id: number;
+// Define types
+interface Gateway {
+  gateway_id: string;
   name: string;
-  shortName: string;
-  identifier: string;
-  status: 'active' | 'inactive' | 'maintenance';
+  updated_at: string;
+  status?: 'active' | 'inactive'; // Optional as API doesn't provide status
+}
+
+interface Pool {
+  id: string;
+  name: string;
+  gateways: Gateway[];
   isDefault: boolean;
-  logo: string;
-  type: string;
-  pool: string;
-  lastUpdated: string;
-};
+}
 
-type ViewMode = 'cards' | 'list';
+interface GatewayWithPoolName extends Gateway {
+  poolName: string;
+}
+interface GatewayCardProps {
+  gateway: Gateway;
+  handleGatewayClick: (gatewayId: string) => void;
+}
 
-const PGManagerPage: React.FC = () => {
-  const [viewMode, setViewMode] = useState<ViewMode>('cards');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedPgPool, setSelectedPgPool] = useState('all');
-  const [isLoading, setIsLoading] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
+const GatewayCard: React.FC<GatewayCardProps> = ({ gateway, handleGatewayClick }) => {
+  const [imageError, setImageError] = useState(false);
 
-  // Dummy data for payment gateways
-  const pgConfigurations: PaymentGateway[] = [
-    {
-      id: 1,
-      name: 'PayU GPO',
-      shortName: 'PayU',
-      identifier: 'RphJQf',
-      status: 'active',
-      isDefault: true,
-      logo: 'https://www.payu.in/wp-content/uploads/2021/11/PayU_new_logo.svg',
-      type: 'payu',
-      pool: 'pool1',
-      lastUpdated: '2023-05-15T10:30:00Z'
-    },
-    {
-      id: 2,
-      name: 'Cashfree Payments',
-      shortName: 'Cashfree',
-      identifier: 'CF6***TG',
-      status: 'active',
-      isDefault: false,
-      logo: 'https://www.cashfree.com/static/images/logo.svg',
-      type: 'cashfree',
-      pool: 'pool1',
-      lastUpdated: '2023-06-20T14:45:00Z'
-    },
-    {
-      id: 3,
-      name: 'Stripe Payments',
-      shortName: 'Stripe',
-      identifier: 'STR***789',
-      status: 'active',
-      isDefault: false,
-      logo: 'https://b.stripecdn.com/docs-statics-srv/assets/e0d3b072527320a6a5b5.png',
-      type: 'stripe',
-      pool: 'pool2',
-      lastUpdated: '2023-07-10T09:15:00Z'
-    },
-    {
-      id: 4,
-      name: 'Razorpay Gateway',
-      shortName: 'Razorpay',
-      identifier: 'RZP***456',
-      status: 'maintenance',
-      isDefault: false,
-      logo: 'https://razorpay.com/assets/razorpay-glyph.svg',
-      type: 'razorpay',
-      pool: 'pool2',
-      lastUpdated: '2023-08-05T16:20:00Z'
-    },
-    {
-      id: 5,
-      name: 'Paytm Wallet',
-      shortName: 'Paytm',
-      identifier: 'PTM***123',
-      status: 'inactive',
-      isDefault: false,
-      logo: 'https://pwebassets.paytm.com/commonwebassets/paytmweb/header/images/logo.svg',
-      type: 'paytm',
-      pool: 'pool1',
-      lastUpdated: '2023-04-30T11:10:00Z'
-    },
-    {
-      id: 6,
-      name: 'PhonePe UPI',
-      shortName: 'PhonePe',
-      identifier: 'PPE***987',
-      status: 'active',
-      isDefault: false,
-      logo: 'https://www.phonepe.com/webstatic/static/images/phonepe_logo.svg',
-      type: 'phonepe',
-      pool: 'pool2',
-      lastUpdated: '2023-09-12T13:25:00Z'
+  // Function to get the image path based on gateway name
+  const getGatewayImage = (gatewayName: string) => {
+    // Convert gateway name to lowercase and remove special characters
+    const imageName = gatewayName.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
+    return `/src/assets/gateway/${imageName}.png`;
+  };
+
+  // Function to format the updated_at timestamp
+  const formatLastUpdated = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInMs = now.getTime() - date.getTime();
+
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+    if (diffInMinutes < 1) {
+      return "Just now";
+    } else if (diffInMinutes < 60) {
+      return `${diffInMinutes}m ago`;
+    } else if (diffInHours < 24) {
+      return `${diffInHours}h ago`;
+    } else {
+      return `${diffInDays}d ago`;
     }
-  ];
-
-  const pgPools = [
-    { value: 'all', label: 'All PGs' },
-    { value: 'pool1', label: 'Pool 1' },
-    { value: 'pool2', label: 'Pool 2' }
-  ];
-
-  // Filter gateways based on search query and selected pool
-  const filteredGateways = useMemo(() => {
-    return pgConfigurations.filter(gateway => {
-      const matchesSearch = gateway.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          gateway.shortName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          gateway.identifier.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesPool = selectedPgPool === 'all' || gateway.pool === selectedPgPool;
-      return matchesSearch && matchesPool;
-    });
-  }, [pgConfigurations, searchQuery, selectedPgPool, refreshKey]);
-
-  const handleRefresh = () => {
-    setIsLoading(true);
-    // Simulate API refresh
-    setTimeout(() => {
-      setRefreshKey(prev => prev + 1);
-      setIsLoading(false);
-    }, 1000);
   };
 
-  const handleMakeDefault = (id: number) => {
-    // In a real app, this would call an API
-    console.log(`Making gateway ${id} default`);
-  };
 
-  const handleDelete = (id: number) => {
-    // In a real app, this would call an API
-    console.log(`Deleting gateway ${id}`);
-  };
-
-  const statusBadgeColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'inactive': return 'bg-gray-100 text-gray-800';
-      case 'maintenance': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+  const handleImageError = () => {
+    setImageError(true);
   };
 
   return (
-    <>
-      {/* Test Mode Banner */}
-      <div className="bg-yellow-400 text-black px-4 py-2 mb-6 rounded-lg flex items-center justify-between">
-        <span className="font-medium">You are viewing in test mode</span>
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-yellow-600 rounded-full"></div>
-            <span className="text-sm">Test Mode</span>
+    <div className="max-w-xs mx-auto">
+      <div
+        key={gateway.gateway_id}
+        className="flex flex-col p-4 border border-gray-200 rounded-lg hover:shadow-md transition-all cursor-pointer bg-white h-64"
+        onClick={() => handleGatewayClick(gateway.gateway_id)}
+      >
+        {/* Image container with full width */}
+        <div className="h-44 mb-4 bg-gray-50 rounded-lg flex items-center justify-center overflow-hidden">
+          {!imageError ? (
+            <img
+              src={getGatewayImage(gateway.name)}
+              alt={`${gateway.name} logo`}
+              className="w-full h-full object-cover p-2"
+              onError={handleImageError}
+            />
+          ) : (
+            // Fallback to initials if image fails to load
+            <div className="w-full h-full flex items-center justify-center bg-blue-50">
+              <span className="text-blue-600 font-bold text-2xl">
+                {gateway.name.split(' ').map(w => w[0]).join('').toUpperCase()}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Gateway name and status - left aligned */}
+        <div className="flex flex-col items-start flex-grow justify-end">
+          <h3 className="font-semibold text-xl text-gray-900 capitalize line-clamp-1">
+            {gateway.name}
+          </h3>
+
+          {/* Status and last updated container */}
+          <div className="flex items-center justify-between w-full mt-2">
+            {/* Status indicator */}
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${(gateway.status || 'active') === 'active'
+                ? 'bg-green-100 text-green-800'
+                : 'bg-red-100 text-red-800'
+              }`}>
+              {gateway.status || 'active'}
+            </span>
+
+            {/* Last updated timestamp */}
+            {gateway.updated_at && (
+              <span className="text-xs text-gray-500 text-right">
+                Last updated: {formatLastUpdated(gateway.updated_at)}
+              </span>
+            )}
           </div>
-          <button className="bg-yellow-500 hover:bg-yellow-600 text-black px-3 py-1 rounded text-sm font-medium">
-            Close
-          </button>
         </div>
       </div>
+    </div>
+  );
+};
 
-      {/* Breadcrumbs */}
-      <div className="mb-6">
-        <nav className="text-sm text-gray-500">
+const PGManagerPage: React.FC = () => {
+  const [pools, setPools] = useState<Pool[]>([]);
+  const [selectedPool, setSelectedPool] = useState<string>('default');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
+  const [showAddPoolModal, setShowAddPoolModal] = useState<boolean>(false);
+  const [newPoolName, setNewPoolName] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const navigate = useNavigate();
+  const getAccessToken = () => {
+    // Replace this with your actual token storage method
+    return Cookies.get('accessToken') || '';
+  };
+
+  const handleGatewayClick = (gatewayId: string): void => {
+    navigate(`/pg/update/${gatewayId}`);
+  };
+
+  // Fetch gateways from API
+  useEffect(() => {
+    const fetchGateways = async () => {
+      try {
+        setIsLoading(true);
+        const response = await axios.get(`${baseURL}/vendor/get-vendor-gateways`, {
+          headers: {
+            Authorization: `Bearer ${getAccessToken()}`
+          }
+        });
+        const data = response.data;
+        console.log("Fetched gateways:", data);
+
+        if (data.status === 'success') {
+          // Create default pool with gateways from API
+          const defaultPool: Pool = {
+            id: 'default',
+            name: 'Default Pool',
+            gateways: data.data.map((gateway: any) => ({
+              ...gateway,
+              status: 'active' // Default status since API doesn't provide it
+            })),
+            isDefault: true
+          };
+
+          setPools([defaultPool]);
+        } else {
+          console.error('Failed to fetch gateways:', data.message);
+          // Initialize with empty default pool if API fails
+          setPools([{
+            id: 'default',
+            name: 'Default Pool',
+            gateways: [],
+            isDefault: true
+          }]);
+        }
+      } catch (error) {
+        console.error('Error fetching gateways:', error);
+        // Initialize with empty default pool on error
+        setPools([{
+          id: 'default',
+          name: 'Default Pool',
+          gateways: [],
+          isDefault: true
+        }]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchGateways();
+  }, []);
+
+  // Handle adding new pool
+  const handleAddPool = (): void => {
+    if (newPoolName.trim()) {
+      const newPool: Pool = {
+        id: Date.now().toString(),
+        name: newPoolName.trim(),
+        gateways: [],
+        isDefault: false
+      };
+      setPools([...pools, newPool]);
+      setNewPoolName('');
+      setShowAddPoolModal(false);
+    }
+  };
+
+  // Handle pool selection
+  const handlePoolSelect = (poolId: string): void => {
+    setSelectedPool(poolId);
+  };
+
+  // Get filtered gateways based on selected pool
+  const getFilteredGateways = (): GatewayWithPoolName[] => {
+    if (selectedPool === 'all') {
+      return pools.flatMap(pool =>
+        pool.gateways.map(gateway => ({ ...gateway, poolName: pool.name }))
+      );
+    }
+    const pool = pools.find(p => p.id === selectedPool);
+    return pool ? pool.gateways.map(gw => ({ ...gw, poolName: pool.name })) : [];
+  };
+
+  // Filter gateways based on search
+  const filteredGateways = getFilteredGateways().filter(gateway =>
+    gateway.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+
+  const selectedPoolName = selectedPool === 'all'
+    ? 'All PGs'
+    : pools.find(p => p.id === selectedPool)?.name || 'Default Pool';
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading payment gateways...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center text-sm text-gray-500 mb-4">
           <span>Dashboard</span>
           <span className="mx-2">/</span>
           <span>Settings</span>
           <span className="mx-2">/</span>
-          <span className="font-semibold text-gray-900">PG Manager</span>
-        </nav>
-      </div>
-
-      {/* Page Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">PG Manager</h1>
-          <p className="text-gray-600">You can edit and manage multiple PG configurations here.</p>
+          <span className="text-gray-900 font-medium">PG Manager</span>
         </div>
-        <button 
-          onClick={handleRefresh}
-          disabled={isLoading}
-          className="flex items-center space-x-2 bg-white border border-gray-300 rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          <ArrowPathIcon className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-          <span>Refresh</span>
-        </button>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">PG Manager</h1>
+            <p className="text-gray-600 mt-1">You can edit and manage multiple PG configurations here.</p>
+          </div>
+          <button
+            className="flex items-center gap-1 text-gray-600 hover:text-gray-900 transition-colors"
+            onClick={() => window.location.reload()}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Refresh
+          </button>
+        </div>
       </div>
 
-      {/* Search and Filter Section */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
-        <div className="flex flex-wrap items-center gap-4">
-          {/* PG Pool Dropdown */}
-          <div className="min-w-[120px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Pg Pool</label>
-            <select
-              value={selectedPgPool}
-              onChange={(e) => setSelectedPgPool(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              {pgPools.map((pool) => (
-                <option key={pool.value} value={pool.value}>
-                  {pool.label}
-                </option>
-              ))}
-            </select>
+      {/* Main Content */}
+      <div className="px-6 py-6">
+        <div className="flex items-center gap-4 mb-6 flex-wrap">
+          {/* Pool Selector */}
+          <div className="relative">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Pg Pool</label>
+            <div className="relative">
+              <select
+                value={selectedPool}
+                onChange={(e) => handlePoolSelect(e.target.value)}
+                className="appearance-none bg-white border border-gray-300 rounded-md px-4 py-2 pr-8 min-w-[120px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="default">Default Pool</option>
+                <option value="all">All PGs</option>
+                {pools.filter(pool => !pool.isDefault).map(pool => (
+                  <option key={pool.id} value={pool.id}>{pool.name}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            </div>
           </div>
 
-          {/* Search Input */}
-          <div className="flex-1 min-w-[300px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+          {/* Search */}
+          <div className="flex-1 max-w-md min-w-[200px]">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-              </div>
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search payment gateways..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
           </div>
 
           {/* View Mode Toggle */}
-          <div className="flex items-end space-x-2">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`px-3 py-2 rounded-md border ${
-                viewMode === 'list'
-                  ? 'bg-blue-50 border-blue-200 text-blue-700'
-                  : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
-              }`}
-              aria-label="List view"
-            >
-              <ListBulletIcon className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setViewMode('cards')}
-              className={`px-3 py-2 rounded-md border ${
-                viewMode === 'cards'
-                  ? 'bg-blue-50 border-blue-200 text-blue-700'
-                  : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
-              }`}
-              aria-label="Card view"
-            >
-              <Squares2X2Icon className="w-5 h-5" />
-            </button>
+          <div className="flex items-end gap-2">
+            <div className="flex border border-gray-300 rounded-md overflow-hidden">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 ${viewMode === 'list' ? 'bg-gray-100' : 'bg-white'} hover:bg-gray-50 transition-colors`}
+              >
+                <List className="w-4 h-4 text-gray-600" />
+              </button>
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 ${viewMode === 'grid' ? 'bg-gray-100' : 'bg-white'} hover:bg-gray-50 transition-colors`}
+              >
+                <Grid className="w-4 h-4 text-gray-600" />
+              </button>
+            </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-end space-x-2">
-            <Link 
-              to="/pg/create" 
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md flex items-center space-x-2"
+          <div className="flex items-end gap-3 flex-wrap mt-2 sm:mt-0">
+            <Link
+              to={'/pg/create'}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors font-medium"
             >
-              <PlusIcon className="w-4 h-4" />
-              <span>Add new PG</span>
+              <Plus className="w-4 h-4" />
+              Add new PG
             </Link>
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center space-x-2">
-              <PlusIcon className="w-4 h-4" />
-              <span>Add new pool</span>
+            <button
+              onClick={() => setShowAddPoolModal(true)}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors font-medium"
+            >
+              <Plus className="w-4 h-4" />
+              Add new pool
             </button>
           </div>
         </div>
-      </div>
 
-      {/* PG Pool ID Display */}
-      <div className="flex justify-between items-center mb-4">
-        <div className="text-sm text-gray-600">
-          Showing {filteredGateways.length} of {pgConfigurations.length} payment gateways
-        </div>
-        <div className="text-sm text-gray-600">
-          PG Pool ID: <span className="font-medium">0</span>
-        </div>
-      </div>
-
-      {/* Payment Gateway Display */}
-      {filteredGateways.length === 0 ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-          <div className="text-gray-500 mb-4">No payment gateways found matching your criteria</div>
-          <Link 
-            to="/pg/create" 
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
-          >
-            <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
-            Add New Payment Gateway
-          </Link>
-        </div>
-      ) : viewMode === 'cards' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredGateways.map((gateway) => (
-            <div key={gateway.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
-              <div className="p-5">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="flex-shrink-0 h-10 w-10 rounded-md bg-white border border-gray-200 p-1 flex items-center justify-center">
-                      <img 
-                        src={gateway.logo} 
-                        alt={gateway.name} 
-                        className="h-8 w-auto object-contain" 
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = 'https://via.placeholder.com/40?text=PG';
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900">{gateway.shortName}</h3>
-                      <p className="text-sm text-gray-500">{gateway.name}</p>
-                    </div>
-                  </div>
-                  <div className="relative">
-                    <button className="text-gray-400 hover:text-gray-500">
-                      <EllipsisVerticalIcon className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-4 space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Identifier</span>
-                    <span className="text-sm font-medium">{gateway.identifier}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Status</span>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadgeColor(gateway.status)}`}>
-                      {gateway.status.charAt(0).toUpperCase() + gateway.status.slice(1)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Pool</span>
-                    <span className="text-sm font-medium">{gateway.pool}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Last Updated</span>
-                    <span className="text-sm font-medium">
-                      {new Date(gateway.lastUpdated).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-6 flex space-x-3">
-                  <Link
-                    to={`/pg/edit/${gateway.id}`}
-                    className="flex-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 px-4 py-2 rounded-md text-sm font-medium flex items-center justify-center space-x-2"
-                  >
-                    <PencilIcon className="h-4 w-4" />
-                    <span>Edit</span>
-                  </Link>
-                  <button
-                    onClick={() => handleDelete(gateway.id)}
-                    className="flex-1 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 px-4 py-2 rounded-md text-sm font-medium flex items-center justify-center space-x-2"
-                  >
-                    <TrashIcon className="h-4 w-4" />
-                    <span>Delete</span>
-                  </button>
-                </div>
-
-                {gateway.isDefault ? (
-                  <div className="mt-4 text-center">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
-                      Default Gateway
-                    </span>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => handleMakeDefault(gateway.id)}
-                    className="mt-4 w-full bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium"
-                  >
-                    Set as Default
-                  </button>
-                )}
+        {/* Gateway Display */}
+        <div className="bg-white rounded-lg border border-gray-200">
+          {filteredGateways.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Search className="w-8 h-8 text-gray-400" />
               </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {selectedPool === 'all' ? 'No gateways found' : 'No gateway added in this pool'}
+              </h3>
+              <p className="text-gray-500 mb-4">
+                {selectedPool === 'all'
+                  ? 'Try adjusting your search or add a new payment gateway.'
+                  : `The ${selectedPoolName} pool doesn't have any payment gateways configured yet.`
+                }
+              </p>
+              <Link
+                to={'/pg/create'}
+                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add Payment Gateway
+              </Link>
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Gateway
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Identifier
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Pool
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Last Updated
-                </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredGateways.map((gateway) => (
-                <tr key={gateway.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10 rounded-md bg-white border border-gray-200 p-1 flex items-center justify-center">
-                        <img 
-                          src={gateway.logo} 
-                          alt={gateway.name} 
-                          className="h-8 w-auto object-contain" 
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = 'https://via.placeholder.com/40?text=PG';
-                          }}
-                        />
+          ) : (
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Payment Gateways {selectedPool !== 'all' && `in ${selectedPoolName}`}
+                </h2>
+                <span className="text-sm text-gray-500">
+                  {filteredGateways.length} gateway{filteredGateways.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+
+              {viewMode === 'list' ? (
+                <div className="space-y-3">
+                  {filteredGateways.map((gateway) => (
+                    <div
+                      key={gateway.gateway_id}
+                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                      onClick={() => handleGatewayClick(gateway.gateway_id)}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <span className="text-blue-600 font-semibold text-sm">
+                            {gateway.name.split(' ').map(w => w[0]).join('').toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <h3 className="font-medium text-gray-900 capitalize">{gateway.name}</h3>
+                          {selectedPool === 'all' && (
+                            <p className="text-sm text-gray-500">Pool: {gateway.poolName}</p>
+                          )}
+                        </div>
                       </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{gateway.shortName}</div>
-                        <div className="text-sm text-gray-500">{gateway.name}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {gateway.identifier}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeColor(gateway.status)}`}>
-                      {gateway.status.charAt(0).toUpperCase() + gateway.status.slice(1)}
-                    </span>
-                    {gateway.isDefault && (
-                      <span className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
-                        Default
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {gateway.pool}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(gateway.lastUpdated).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end space-x-2">
-                      <Link
-                        to={`/pg/edit/${gateway.id}`}
-                        className="text-blue-600 hover:text-blue-900"
-                        title="Edit"
-                      >
-                        <PencilIcon className="h-5 w-5" />
-                      </Link>
-                      <button
-                        onClick={() => handleDelete(gateway.id)}
-                        className="text-red-600 hover:text-red-900"
-                        title="Delete"
-                      >
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
-                      {!gateway.isDefault && (
-                        <button
-                          onClick={() => handleMakeDefault(gateway.id)}
-                          className="text-purple-600 hover:text-purple-900"
-                          title="Set as Default"
-                        >
-                          <ArrowTopRightOnSquareIcon className="h-5 w-5" />
+                      <div className="flex items-center gap-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${gateway.status === 'active'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                          }`}>
+                          {gateway.status || 'active'}
+                        </span>
+                        <button className="text-gray-400 hover:text-gray-600">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                          </svg>
                         </button>
-                      )}
+                      </div>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredGateways.map((gateway) => (
+                    // <div 
+                    // key={gateway.gateway_id} 
+                    // className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                    // onClick={() => handleGatewayClick(gateway.gateway_id)}
+                    // >
+                    //   <div className="flex items-center justify-between mb-3">
+                    //     <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    //       <span className="text-blue-600 font-semibold text-sm">
+                    //         {gateway.name.split(' ').map(w => w[0]).join('').toUpperCase()}
+                    //       </span>
+                    //     </div>
+                    //     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    //       gateway.status === 'active' 
+                    //         ? 'bg-green-100 text-green-800' 
+                    //         : 'bg-red-100 text-red-800'
+                    //     }`}>
+                    //       {gateway.status || 'active'}
+                    //     </span>
+                    //   </div>
+                    //   <h3 className="font-medium text-gray-900 mb-1 capitalize">{gateway.name}</h3>
+                    //   {selectedPool === 'all' && (
+                    //     <p className="text-sm text-gray-500">Pool: {gateway.poolName}</p>
+                    //   )}
+                    // </div>
+                    <GatewayCard gateway={gateway} handleGatewayClick={handleGatewayClick} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Add Pool Modal */}
+      {showAddPoolModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Add New Pool</h3>
+              <button
+                onClick={() => {
+                  setShowAddPoolModal(false);
+                  setNewPoolName('');
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Pool Name
+              </label>
+              <input
+                type="text"
+                value={newPoolName}
+                onChange={(e) => setNewPoolName(e.target.value)}
+                placeholder="Enter pool name..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                onKeyPress={(e) => e.key === 'Enter' && handleAddPool()}
+                autoFocus
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  setShowAddPoolModal(false);
+                  setNewPoolName('');
+                }}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddPool}
+                disabled={!newPoolName.trim()}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white rounded-md transition-colors"
+              >
+                Add Pool
+              </button>
+            </div>
+          </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
 
