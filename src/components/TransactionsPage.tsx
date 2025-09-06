@@ -1,16 +1,24 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
-  MagnifyingGlassIcon,
-  ArrowPathIcon,
-  ArrowsUpDownIcon,
-  Squares2X2Icon,
-  CalendarIcon,
-  CloudArrowDownIcon,
-  ChevronDownIcon,
-  CheckIcon,
-  FunnelIcon,
-  XMarkIcon
-} from '@heroicons/react/24/outline';
+  Search,
+  RotateCcw,
+  ArrowUpDown,
+  Grid3X3,
+  Calendar,
+  Download,
+  ChevronDown,
+  Check,
+  Filter,
+  Receipt,
+  Hash,
+  User,
+  CalendarDays,
+  DollarSign,
+  CreditCard,
+  Building,
+  CheckCircle,
+  Eye
+} from 'lucide-react';
 
 interface Transaction {
   id: string;
@@ -22,6 +30,61 @@ interface Transaction {
   gateway: string;
   status: 'Success' | 'Failed' | 'Pending' | 'Refunded';
 }
+
+interface DropdownOption {
+  value: string;
+  label: string;
+}
+
+interface DropdownProps {
+  options: DropdownOption[];
+  selected: string | null;
+  placeholder: string;
+  onSelect: (value: string | null) => void;
+  icon?: React.ReactNode;
+  isOpen: boolean;
+  onToggle: () => void;
+}
+
+const Dropdown: React.FC<DropdownProps> = ({ options, selected, placeholder, onSelect, icon, isOpen, onToggle }) => (
+  <div className="relative">
+    <button
+      onClick={onToggle}
+      className="flex items-center space-x-2 px-4 py-2.5 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md border border-gray-300 transition-all duration-200 hover:shadow-sm bg-white"
+    >
+      {icon}
+      <span>{selected || placeholder}</span>
+      <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+    </button>
+
+    {isOpen && (
+      <div className="absolute z-50 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 animate-dropdown-open">
+        <ul className="py-1 max-h-60 overflow-auto">
+          {options.map((option) => (
+            <li key={option.value}>
+              <button
+                onClick={() => {
+                  onSelect(option.value === 'all' ? null : option.value);
+                  onToggle();
+                }}
+                className={`flex items-center justify-between w-full text-left px-4 py-2.5 text-sm transition-colors duration-150 ${
+                  (selected === option.value || (option.value === 'all' && !selected))
+                    ? 'bg-teal-50 text-teal-700'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                {option.label}
+                {(selected === option.value || (option.value === 'all' && !selected)) && (
+                  <Check className="w-4 h-4 text-teal-500" />
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+  </div>
+);
 
 const TransactionsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,20 +112,16 @@ const TransactionsPage: React.FC = () => {
     status: true
   });
 
-  // Single open dropdown key and outside click handling
-  const [openDropdown, setOpenDropdown] = useState<
-    null | 'method' | 'gateway' | 'status' | 'date' | 'sort' | 'order' | 'view'
-  >(null);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const filtersRef = useRef<HTMLDivElement>(null);
 
-  const toggleDropdown = (key: NonNullable<typeof openDropdown>) => {
+  const toggleDropdown = (key: string) => {
     setOpenDropdown(prev => (prev === key ? null : key));
   };
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
-      if (!filtersRef.current) return;
-      if (!filtersRef.current.contains(e.target as Node)) {
+      if (!filtersRef.current?.contains(e.target as Node)) {
         setOpenDropdown(null);
       }
     };
@@ -70,13 +129,50 @@ const TransactionsPage: React.FC = () => {
     return () => document.removeEventListener('mousedown', onDocClick);
   }, []);
 
-  // Options for dropdowns
-  const paymentMethods = ['All Methods', 'UPI', 'Net Banking', 'Credit Card', 'Debit Card', 'Wallet', 'Cash on Delivery'];
-  const gateways = ['All Gateways', 'Razorpay', 'Paytm', 'Stripe', 'PayPal', 'CCAvenue'];
-  const statuses = ['All Statuses', 'Success', 'Failed', 'Pending', 'Refunded'];
-  const sortOptions = ['Date', 'Amount', 'Customer'];
-  const orderOptions = ['Ascending', 'Descending'];
-  const dateOptions = ['All Time', 'Today', 'Yesterday', 'Last 7 Days', 'Last 30 Days', 'Custom Range'];
+  // Dropdown options
+  const dropdownOptions = {
+    methods: [
+      { value: 'all', label: 'All Methods' },
+      { value: 'UPI', label: 'UPI' },
+      { value: 'Net Banking', label: 'Net Banking' },
+      { value: 'Credit Card', label: 'Credit Card' },
+      { value: 'Debit Card', label: 'Debit Card' },
+      { value: 'Wallet', label: 'Wallet' },
+      { value: 'Cash on Delivery', label: 'Cash on Delivery' }
+    ],
+    gateways: [
+      { value: 'all', label: 'All Gateways' },
+      { value: 'Razorpay', label: 'Razorpay' },
+      { value: 'Paytm', label: 'Paytm' },
+      { value: 'Stripe', label: 'Stripe' },
+      { value: 'PayPal', label: 'PayPal' },
+      { value: 'CCAvenue', label: 'CCAvenue' }
+    ],
+    statuses: [
+      { value: 'all', label: 'All Statuses' },
+      { value: 'Success', label: 'Success' },
+      { value: 'Failed', label: 'Failed' },
+      { value: 'Pending', label: 'Pending' },
+      { value: 'Refunded', label: 'Refunded' }
+    ],
+    sorts: [
+      { value: 'Date', label: 'Date' },
+      { value: 'Amount', label: 'Amount' },
+      { value: 'Customer', label: 'Customer' }
+    ],
+    orders: [
+      { value: 'Ascending', label: 'Ascending' },
+      { value: 'Descending', label: 'Descending' }
+    ],
+    dates: [
+      { value: 'All Time', label: 'All Time' },
+      { value: 'Today', label: 'Today' },
+      { value: 'Yesterday', label: 'Yesterday' },
+      { value: 'Last 7 Days', label: 'Last 7 Days' },
+      { value: 'Last 30 Days', label: 'Last 30 Days' },
+      { value: 'Custom Range', label: 'Custom Range' }
+    ]
+  };
 
   // Sample transaction data
   const transactions: Transaction[] = [
@@ -159,81 +255,61 @@ const TransactionsPage: React.FC = () => {
     // Apply search filter
     if (searchQuery) {
       filtered = filtered.filter(transaction => {
-        if (selectedFilter === 'Receipt ID') {
-          return transaction.receiptId.toLowerCase().includes(searchQuery.toLowerCase());
-        } else if (selectedFilter === 'Transaction ID') {
-          return transaction.id.toLowerCase().includes(searchQuery.toLowerCase());
-        } else {
-          return transaction.customer.toLowerCase().includes(searchQuery.toLowerCase());
+        const searchValue = searchQuery.toLowerCase();
+        switch (selectedFilter) {
+          case 'Receipt ID':
+            return transaction.receiptId.toLowerCase().includes(searchValue);
+          case 'Transaction ID':
+            return transaction.id.toLowerCase().includes(searchValue);
+          default:
+            return transaction.customer.toLowerCase().includes(searchValue);
         }
       });
     }
     
-    // Apply method filter
-    if (selectedMethod && selectedMethod !== 'All Methods') {
-      filtered = filtered.filter(transaction => transaction.method === selectedMethod);
-    }
-    
-    // Apply gateway filter
-    if (selectedGateway && selectedGateway !== 'All Gateways') {
-      filtered = filtered.filter(transaction => transaction.gateway === selectedGateway);
-    }
-    
-    // Apply status filter
-    if (selectedStatus && selectedStatus !== 'All Statuses') {
-      filtered = filtered.filter(transaction => transaction.status === selectedStatus);
-    }
+    // Apply filters
+    if (selectedMethod) filtered = filtered.filter(t => t.method === selectedMethod);
+    if (selectedGateway) filtered = filtered.filter(t => t.gateway === selectedGateway);
+    if (selectedStatus) filtered = filtered.filter(t => t.status === selectedStatus);
     
     // Apply date filter (simplified for demo)
-    if (dateFilter === 'Today') {
-      filtered = filtered.filter(transaction => transaction.date.includes('2023-05-15'));
-    } else if (dateFilter === 'Yesterday') {
-      filtered = filtered.filter(transaction => transaction.date.includes('2023-05-14'));
-    } else if (dateFilter === 'Last 7 Days') {
-      // This would be more complex with actual date logic
-      filtered = filtered.filter(transaction => 
-        transaction.date.includes('2023-05-15') || 
-        transaction.date.includes('2023-05-14') ||
-        transaction.date.includes('2023-05-13') ||
-        transaction.date.includes('2023-05-12') ||
-        transaction.date.includes('2023-05-11')
-      );
+    const dateFilters = {
+      'Today': () => filtered.filter(t => t.date.includes('2023-05-15')),
+      'Yesterday': () => filtered.filter(t => t.date.includes('2023-05-14')),
+      'Last 7 Days': () => filtered.filter(t => 
+        ['2023-05-15', '2023-05-14', '2023-05-13', '2023-05-12', '2023-05-11'].some(date => t.date.includes(date))
+      )
+    };
+    
+    if (dateFilter !== 'All Time' && dateFilters[dateFilter as keyof typeof dateFilters]) {
+      filtered = dateFilters[dateFilter as keyof typeof dateFilters]();
     }
     
     // Apply sorting
     filtered.sort((a, b) => {
       let aValue, bValue;
       
-      if (selectedSort === 'Date') {
-        aValue = new Date(a.date).getTime();
-        bValue = new Date(b.date).getTime();
-      } else if (selectedSort === 'Amount') {
-        aValue = a.amount;
-        bValue = b.amount;
-      } else {
-        aValue = a.customer.toLowerCase();
-        bValue = b.customer.toLowerCase();
+      switch (selectedSort) {
+        case 'Date':
+          aValue = new Date(a.date).getTime();
+          bValue = new Date(b.date).getTime();
+          break;
+        case 'Amount':
+          aValue = a.amount;
+          bValue = b.amount;
+          break;
+        default:
+          aValue = a.customer.toLowerCase();
+          bValue = b.customer.toLowerCase();
       }
       
-      if (selectedOrder === 'Ascending') {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
+      return selectedOrder === 'Ascending' 
+        ? aValue > bValue ? 1 : -1
+        : aValue < bValue ? 1 : -1;
     });
     
     return filtered;
-  }, [
-    transactions, 
-    searchQuery, 
-    selectedFilter, 
-    selectedMethod, 
-    selectedGateway, 
-    selectedStatus, 
-    selectedSort, 
-    selectedOrder,
-    dateFilter
-  ]);
+  }, [transactions, searchQuery, selectedFilter, selectedMethod, selectedGateway, selectedStatus, selectedSort, selectedOrder, dateFilter]);
 
   // Pagination logic
   const totalPages = Math.ceil(filteredAndSortedTransactions.length / itemsPerPage);
@@ -242,7 +318,6 @@ const TransactionsPage: React.FC = () => {
     currentPage * itemsPerPage
   );
 
-  // Reset all filters
   const resetFilters = () => {
     setSearchQuery('');
     setSelectedMethod(null);
@@ -254,110 +329,52 @@ const TransactionsPage: React.FC = () => {
     setCurrentPage(1);
   };
 
-  // Toggle view option
   const toggleViewOption = (option: keyof typeof viewOptions) => {
-    setViewOptions(prev => ({
-      ...prev,
-      [option]: !prev[option]
-    }));
+    setViewOptions(prev => ({ ...prev, [option]: !prev[option] }));
   };
 
-  // Check if any filters are active
-  const isFilterActive = searchQuery || 
-    (selectedMethod && selectedMethod !== 'All Methods') || 
-    (selectedGateway && selectedGateway !== 'All Gateways') || 
-    (selectedStatus && selectedStatus !== 'All Statuses') ||
-    dateFilter !== 'All Time';
+  const isFilterActive = searchQuery || selectedMethod || selectedGateway || selectedStatus || dateFilter !== 'All Time';
+
+  const getStatusBadgeClass = (status: string) => {
+    const statusClasses = {
+      'Success': 'bg-green-100 text-green-800 border-green-200',
+      'Failed': 'bg-red-100 text-red-800 border-red-200',
+      'Pending': 'bg-amber-100 text-amber-800 border-amber-200',
+      'Refunded': 'bg-purple-100 text-purple-800 border-purple-200'
+    };
+    return `px-3 py-1 inline-flex text-xs leading-5 font-medium rounded-full border transition-all duration-200 ${statusClasses[status as keyof typeof statusClasses]}`;
+  };
 
   return (
-    <>
-      {/* Page Title and Stats */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>
-        <p className="text-sm text-gray-500 mt-1">Manage and review all transactions</p>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow-sm border p-4">
-          <div className="flex items-center">
-            <div className="rounded-full bg-blue-100 p-3 mr-4">
-              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Total Transactions</p>
-              <p className="text-2xl font-bold text-gray-900">{transactions.length}</p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gray-50 p-6">
+      {/* Page Title */}
+      <div className="mb-8">
+        <div className="flex items-center space-x-3 mb-2">
+          <Receipt className="w-8 h-8 text-teal-600" />
+          <h1 className="text-3xl font-bold text-gray-900">Transactions</h1>
         </div>
-        
-        <div className="bg-white rounded-lg shadow-sm border p-4">
-          <div className="flex items-center">
-            <div className="rounded-full bg-green-100 p-3 mr-4">
-              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Successful</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {transactions.filter(t => t.status === 'Success').length}
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg shadow-sm border p-4">
-          <div className="flex items-center">
-            <div className="rounded-full bg-red-100 p-3 mr-4">
-              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Failed</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {transactions.filter(t => t.status === 'Failed').length}
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg shadow-sm border p-4">
-          <div className="flex items-center">
-            <div className="rounded-full bg-purple-100 p-3 mr-4">
-              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Pending</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {transactions.filter(t => t.status === 'Pending').length}
-              </p>
-            </div>
-          </div>
-        </div>
+        <p className="text-gray-600 flex items-center space-x-2">
+          <CheckCircle className="w-4 h-4" />
+          <span>Monitor and analyze all transaction activities</span>
+        </p>
       </div>
 
       {/* Filters and Search Bar */}
-      <div ref={filtersRef} className="bg-white rounded-lg shadow-sm border p-4 mb-6">
-        <div className="flex flex-wrap items-center gap-3 mb-3">
+      <div ref={filtersRef} className="bg-white rounded-lg shadow-md border border-gray-200 p-6 mb-8 relative">
+        <div className="flex flex-wrap items-center gap-3 mb-4">
           {/* Filter Dropdown */}
           <div className="relative">
             <select
               value={selectedFilter}
               onChange={(e) => setSelectedFilter(e.target.value)}
-              className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              className="appearance-none bg-white border border-gray-300 rounded-md px-4 py-2.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-200"
             >
               <option value="Receipt ID">Receipt ID</option>
               <option value="Transaction ID">Transaction ID</option>
               <option value="Customer Email">Customer Email</option>
             </select>
             <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-              <ChevronDownIcon className="w-4 h-4 text-gray-400" />
+              <ChevronDown className="w-4 h-4 text-gray-400" />
             </div>
           </div>
 
@@ -372,9 +389,9 @@ const TransactionsPage: React.FC = () => {
                   setSearchQuery(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-200"
               />
-              <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
             </div>
           </div>
 
@@ -382,339 +399,110 @@ const TransactionsPage: React.FC = () => {
           <button
             onClick={resetFilters}
             disabled={!isFilterActive}
-            className={`flex items-center space-x-2 px-3 py-2 text-sm rounded-md ${isFilterActive 
-              ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-100' 
-              : 'text-gray-400 cursor-not-allowed'}`}
+            className={`flex items-center space-x-2 px-4 py-2.5 text-sm rounded-md border transition-all duration-200 ${isFilterActive 
+              ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50 border-gray-300' 
+              : 'text-gray-400 cursor-not-allowed border-gray-200'}`}
           >
-            <ArrowPathIcon className="w-4 h-4" />
+            <RotateCcw className="w-4 h-4" />
             <span>Reset</span>
           </button>
 
-          {/* Filter Button (Mobile) */}
-          <button className="lg:hidden flex items-center space-x-1 px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md border border-gray-300">
-            <FunnelIcon className="w-4 h-4" />
+          <button className="lg:hidden flex items-center space-x-1 px-4 py-2.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-md border border-gray-300">
+            <Filter className="w-4 h-4" />
             <span>Filters</span>
           </button>
         </div>
 
-        {/* Active Filters */}
-        {isFilterActive && (
-          <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-200">
-            <span className="text-xs text-gray-500">Active filters:</span>
-            
-            {searchQuery && (
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
-                {selectedFilter}: {searchQuery}
-                <button 
-                  onClick={() => setSearchQuery('')}
-                  className="ml-1 text-teal-600 hover:text-teal-800"
-                >
-                  <XMarkIcon className="w-3 h-3" />
-                </button>
-              </span>
-            )}
-            
-            {selectedMethod && selectedMethod !== 'All Methods' && (
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
-                Method: {selectedMethod}
-                <button 
-                  onClick={() => setSelectedMethod(null)}
-                  className="ml-1 text-teal-600 hover:text-teal-800"
-                >
-                  <XMarkIcon className="w-3 h-3" />
-                </button>
-              </span>
-            )}
-            
-            {selectedGateway && selectedGateway !== 'All Gateways' && (
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
-                Gateway: {selectedGateway}
-                <button 
-                  onClick={() => setSelectedGateway(null)}
-                  className="ml-1 text-teal-600 hover:text-teal-800"
-                >
-                  <XMarkIcon className="w-3 h-3" />
-                </button>
-              </span>
-            )}
-            
-            {selectedStatus && selectedStatus !== 'All Statuses' && (
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
-                Status: {selectedStatus}
-                <button 
-                  onClick={() => setSelectedStatus(null)}
-                  className="ml-1 text-teal-600 hover:text-teal-800"
-                >
-                  <XMarkIcon className="w-3 h-3" />
-                </button>
-              </span>
-            )}
-            
-            {dateFilter !== 'All Time' && (
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
-                Date: {dateFilter}
-                <button 
-                  onClick={() => setDateFilter('All Time')}
-                  className="ml-1 text-teal-600 hover:text-teal-800"
-                >
-                  <XMarkIcon className="w-3 h-3" />
-                </button>
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Filter Options and Actions (merged into one box) */}
-        <div className="mt-4">
+        {/* Filter Options and Actions */}
+        <div className="mt-6">
           <div className="flex flex-wrap items-center gap-3">
-            {/* Method Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => toggleDropdown('method')}
-                className="flex items-center space-x-1 px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md border border-gray-300"
-              >
-                <span>{selectedMethod || 'All Methods'}</span>
-                <ChevronDownIcon className="w-4 h-4" />
-              </button>
+            <Dropdown
+              options={dropdownOptions.methods}
+              selected={selectedMethod}
+              placeholder="All Methods"
+              onSelect={(value) => {
+                setSelectedMethod(value);
+                setCurrentPage(1);
+              }}
+              isOpen={openDropdown === 'method'}
+              onToggle={() => toggleDropdown('method')}
+            />
 
-              {openDropdown === 'method' && (
-                <div className="absolute z-10 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200">
-                  <ul className="py-1 max-h-60 overflow-auto">
-                    {paymentMethods.map((method) => (
-                      <li key={method}>
-                        <button
-                          onClick={() => {
-                            setSelectedMethod(method === 'All Methods' ? null : method);
-                            setOpenDropdown(null);
-                            setCurrentPage(1);
-                          }}
-                          className={`flex items-center justify-between w-full text-left px-4 py-2 text-sm ${(selectedMethod === method || (method === 'All Methods' && !selectedMethod))
-                            ? 'bg-teal-50 text-teal-700'
-                            : 'text-gray-700 hover:bg-gray-100'
-                            }`}
-                        >
-                          {method}
-                          {(selectedMethod === method || (method === 'All Methods' && !selectedMethod)) && (
-                            <CheckIcon className="w-4 h-4" />
-                          )}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
+            <Dropdown
+              options={dropdownOptions.gateways}
+              selected={selectedGateway}
+              placeholder="All Gateways"
+              onSelect={(value) => {
+                setSelectedGateway(value);
+                setCurrentPage(1);
+              }}
+              isOpen={openDropdown === 'gateway'}
+              onToggle={() => toggleDropdown('gateway')}
+            />
 
-            {/* Gateway Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => toggleDropdown('gateway')}
-                className="flex items-center space-x-1 px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md border border-gray-300"
-              >
-                <span>{selectedGateway || 'All Gateways'}</span>
-                <ChevronDownIcon className="w-4 h-4" />
-              </button>
+            <Dropdown
+              options={dropdownOptions.statuses}
+              selected={selectedStatus}
+              placeholder="All Statuses"
+              onSelect={(value) => {
+                setSelectedStatus(value);
+                setCurrentPage(1);
+              }}
+              isOpen={openDropdown === 'status'}
+              onToggle={() => toggleDropdown('status')}
+            />
 
-              {openDropdown === 'gateway' && (
-                <div className="absolute z-10 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200">
-                  <ul className="py-1 max-h-60 overflow-auto">
-                    {gateways.map((gateway) => (
-                      <li key={gateway}>
-                        <button
-                          onClick={() => {
-                            setSelectedGateway(gateway === 'All Gateways' ? null : gateway);
-                            setOpenDropdown(null);
-                            setCurrentPage(1);
-                          }}
-                          className={`flex items-center justify-between w-full text-left px-4 py-2 text-sm ${(selectedGateway === gateway || (gateway === 'All Gateways' && !selectedGateway))
-                            ? 'bg-teal-50 text-teal-700'
-                            : 'text-gray-700 hover:bg-gray-100'
-                            }`}
-                        >
-                          {gateway}
-                          {(selectedGateway === gateway || (gateway === 'All Gateways' && !selectedGateway)) && (
-                            <CheckIcon className="w-4 h-4" />
-                          )}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
+            <Dropdown
+              options={dropdownOptions.dates}
+              selected={dateFilter}
+              placeholder="All Time"
+              onSelect={(value) => {
+                setDateFilter(value || 'All Time');
+                setCurrentPage(1);
+              }}
+              icon={<Calendar className="w-4 h-4" />}
+              isOpen={openDropdown === 'date'}
+              onToggle={() => toggleDropdown('date')}
+            />
 
-            {/* Status Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => toggleDropdown('status')}
-                className="flex items-center space-x-1 px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md border border-gray-300"
-              >
-                <span>{selectedStatus || 'All Statuses'}</span>
-                <ChevronDownIcon className="w-4 h-4" />
-              </button>
-
-              {openDropdown === 'status' && (
-                <div className="absolute z-10 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200">
-                  <ul className="py-1 max-h-60 overflow-auto">
-                    {statuses.map((status) => (
-                      <li key={status}>
-                        <button
-                          onClick={() => {
-                            setSelectedStatus(status === 'All Statuses' ? null : status);
-                            setOpenDropdown(null);
-                            setCurrentPage(1);
-                          }}
-                          className={`flex items-center justify-between w-full text-left px-4 py-2 text-sm ${(selectedStatus === status || (status === 'All Statuses' && !selectedStatus))
-                            ? 'bg-teal-50 text-teal-700'
-                            : 'text-gray-700 hover:bg-gray-100'
-                            }`}
-                        >
-                          {status}
-                          {(selectedStatus === status || (status === 'All Statuses' && !selectedStatus)) && (
-                            <CheckIcon className="w-4 h-4" />
-                          )}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            {/* Date Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => toggleDropdown('date')}
-                className="flex items-center space-x-1 px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md border border-gray-300"
-              >
-                <CalendarIcon className="w-4 h-4" />
-                <span>{dateFilter}</span>
-                <ChevronDownIcon className="w-4 h-4" />
-              </button>
-
-              {openDropdown === 'date' && (
-                <div className="absolute z-10 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 right-0">
-                  <ul className="py-1">
-                    {dateOptions.map((option) => (
-                      <li key={option}>
-                        <button
-                          onClick={() => {
-                            setDateFilter(option);
-                            setOpenDropdown(null);
-                            setCurrentPage(1);
-                          }}
-                          className={`flex items-center justify-between w-full text-left px-4 py-2 text-sm ${dateFilter === option
-                            ? 'bg-teal-50 text-teal-700'
-                            : 'text-gray-700 hover:bg-gray-100'
-                            }`}
-                        >
-                          {option}
-                          {dateFilter === option && (
-                            <CheckIcon className="w-4 h-4" />
-                          )}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            {/* Sort and Order */}
             <div className="flex space-x-2">
-              <div className="relative">
-                <button
-                  onClick={() => toggleDropdown('sort')}
-                  className="flex items-center space-x-1 px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md border border-gray-300"
-                >
-                  <ArrowsUpDownIcon className="w-4 h-4" />
-                  <span>{selectedSort}</span>
-                  <ChevronDownIcon className="w-4 h-4" />
-                </button>
+              <Dropdown
+                options={dropdownOptions.sorts}
+                selected={selectedSort}
+                placeholder="Sort by"
+                onSelect={(value) => setSelectedSort(value || 'Date')}
+                icon={<ArrowUpDown className="w-4 h-4" />}
+                isOpen={openDropdown === 'sort'}
+                onToggle={() => toggleDropdown('sort')}
+              />
 
-                {openDropdown === 'sort' && (
-                  <div className="absolute z-10 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200">
-                    <ul className="py-1">
-                      {sortOptions.map((option) => (
-                        <li key={option}>
-                          <button
-                            onClick={() => {
-                              setSelectedSort(option);
-                              setOpenDropdown(null);
-                            }}
-                            className={`flex items-center justify-between w-full text-left px-4 py-2 text-sm ${selectedSort === option
-                              ? 'bg-teal-50 text-teal-700'
-                              : 'text-gray-700 hover:bg-gray-100'
-                              }`}
-                          >
-                            {option}
-                            {selectedSort === option && (
-                              <CheckIcon className="w-4 h-4" />
-                            )}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-
-              <div className="relative">
-                <button
-                  onClick={() => toggleDropdown('order')}
-                  className="flex items-center space-x-1 px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md border border-gray-300"
-                >
-                  <ArrowsUpDownIcon className="w-4 h-4" />
-                  <span>{selectedOrder}</span>
-                  <ChevronDownIcon className="w-4 h-4" />
-                </button>
-
-                {openDropdown === 'order' && (
-                  <div className="absolute z-10 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200">
-                    <ul className="py-1">
-                      {orderOptions.map((option) => (
-                        <li key={option}>
-                          <button
-                            onClick={() => {
-                              setSelectedOrder(option);
-                              setOpenDropdown(null);
-                            }}
-                            className={`flex items-center justify-between w-full text-left px-4 py-2 text-sm ${selectedOrder === option
-                              ? 'bg-teal-50 text-teal-700'
-                              : 'text-gray-700 hover:bg-gray-100'
-                              }`}
-                          >
-                            {option}
-                            {selectedOrder === option && (
-                              <CheckIcon className="w-4 h-4" />
-                            )}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
+              <Dropdown
+                options={dropdownOptions.orders}
+                selected={selectedOrder}
+                placeholder="Order"
+                onSelect={(value) => setSelectedOrder(value || 'Descending')}
+                isOpen={openDropdown === 'order'}
+                onToggle={() => toggleDropdown('order')}
+              />
             </div>
 
-            {/* Spacer */}
             <div className="flex-grow"></div>
 
             {/* View Dropdown */}
             <div className="relative">
               <button
                 onClick={() => toggleDropdown('view')}
-                className="flex items-center space-x-1 px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md border border-gray-300"
+                className="flex items-center space-x-2 px-4 py-2.5 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md border border-gray-300 bg-white"
               >
-                <Squares2X2Icon className="w-4 h-4" />
+                <Grid3X3 className="w-4 h-4" />
                 <span>View</span>
-                <ChevronDownIcon className="w-4 h-4" />
+                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${openDropdown === 'view' ? 'rotate-180' : ''}`} />
               </button>
 
               {openDropdown === 'view' && (
-                <div className="absolute z-10 mt-1 w-64 bg-white rounded-md shadow-lg border border-gray-200 right-0">
-                  <div className="p-2">
-                    <h4 className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <div className="absolute z-50 mt-1 w-64 bg-white rounded-md shadow-lg border border-gray-200 right-0">
+                  <div className="p-3">
+                    <h4 className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">
                       Display Columns
                     </h4>
                     <ul className="py-1">
@@ -722,10 +510,12 @@ const TransactionsPage: React.FC = () => {
                         <li key={key}>
                           <button
                             onClick={() => toggleViewOption(key as keyof typeof viewOptions)}
-                            className="flex items-center justify-between w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            className="flex items-center justify-between w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md"
                           >
-                            {key.split(/(?=[A-Z])/).join(' ')}
-                            {value && <CheckIcon className="w-4 h-4 text-teal-500" />}
+                            <span className="capitalize">
+                              {key.replace(/([A-Z])/g, ' $1').trim()}
+                            </span>
+                            {value && <Check className="w-4 h-4 text-teal-500" />}
                           </button>
                         </li>
                       ))}
@@ -735,9 +525,8 @@ const TransactionsPage: React.FC = () => {
               )}
             </div>
 
-            {/* Download Button */}
-            <button className="flex items-center space-x-1 px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md border border-gray-300">
-              <CloudArrowDownIcon className="w-4 h-4" />
+            <button className="flex items-center space-x-2 px-4 py-2.5 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md border border-gray-300 bg-white">
+              <Download className="w-4 h-4" />
               <span>Download</span>
             </button>
           </div>
@@ -745,140 +534,172 @@ const TransactionsPage: React.FC = () => {
       </div>
 
       {/* Transactions Table */}
-      <div className="bg-white rounded-lg shadow-sm border overflow-hidden mb-6">
-        <div className="overflow-x-auto">
-          <table className="w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+      <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden mb-8 h-[80vh] flex flex-col">
+          <div className="overflow-x-auto overflow-y-auto flex-grow">
+
+          <table className="w-full">
+            <thead className="bg-slate-50 sticky top-0 z-20">
               <tr>
                 {viewOptions.receiptId && (
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Receipt ID
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+                    <div className="flex items-center space-x-2">
+                      <Receipt className="w-4 h-4" />
+                      <span>Receipt ID</span>
+                    </div>
                   </th>
                 )}
                 {viewOptions.transactionId && (
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Transaction ID
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+                    <div className="flex items-center space-x-2">
+                      <Hash className="w-4 h-4" />
+                      <span>Transaction ID</span>
+                    </div>
                   </th>
                 )}
                 {viewOptions.customer && (
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Customer
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+                    <div className="flex items-center space-x-2">
+                      <User className="w-4 h-4" />
+                      <span>Customer</span>
+                    </div>
                   </th>
                 )}
                 {viewOptions.date && (
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+                    <div className="flex items-center space-x-2">
+                      <CalendarDays className="w-4 h-4" />
+                      <span>Date & Time</span>
+                    </div>
                   </th>
                 )}
                 {viewOptions.amount && (
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Amount
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+                    <div className="flex items-center space-x-2">
+                      <DollarSign className="w-4 h-4" />
+                      <span>Amount</span>
+                    </div>
                   </th>
                 )}
                 {viewOptions.method && (
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Method
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+                    <div className="flex items-center space-x-2">
+                      <CreditCard className="w-4 h-4" />
+                      <span>Payment Method</span>
+                    </div>
                   </th>
                 )}
                 {viewOptions.gateway && (
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Gateway
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+                    <div className="flex items-center space-x-2">
+                      <Building className="w-4 h-4" />
+                      <span>Gateway</span>
+                    </div>
                   </th>
                 )}
                 {viewOptions.status && (
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle className="w-4 h-4" />
+                      <span>Status</span>
+                    </div>
                   </th>
                 )}
-                <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-100">
               {paginatedTransactions.length > 0 ? (
-                paginatedTransactions.map((transaction) => (
-                  <tr key={transaction.id} className="hover:bg-gray-50">
+                paginatedTransactions.map((transaction, index) => (
+                  <tr 
+                    key={transaction.id} 
+                    className={`hover:bg-gray-50 transition-colors duration-200 ${
+                      index !== paginatedTransactions.length - 1 ? 'border-b border-gray-100' : ''
+                    }`}
+                  >
                     {viewOptions.receiptId && (
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
                         {transaction.receiptId}
                       </td>
                     )}
                     {viewOptions.transactionId && (
-                      <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+                      <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
                         {transaction.id}
                       </td>
                     )}
                     {viewOptions.customer && (
-                      <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+                      <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
                         {transaction.customer}
                       </td>
                     )}
                     {viewOptions.date && (
-                      <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+                      <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
                         {transaction.date}
                       </td>
                     )}
                     {viewOptions.amount && (
-                      <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
-                        ₹{transaction.amount.toFixed(2)}
+                      <td className="px-6 py-4 text-sm text-gray-900 font-semibold whitespace-nowrap">
+                        ₹{transaction.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
                     )}
                     {viewOptions.method && (
-                      <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+                      <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
                         {transaction.method}
                       </td>
                     )}
                     {viewOptions.gateway && (
-                      <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+                      <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
                         {transaction.gateway}
                       </td>
                     )}
                     {viewOptions.status && (
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${transaction.status === 'Success' ? 'bg-green-100 text-green-800' :
-                          transaction.status === 'Failed' ? 'bg-red-100 text-red-800' :
-                            transaction.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-purple-100 text-purple-800'
-                          }`}>
+                      <td className="px-6 py-4">
+                        <span className={getStatusBadgeClass(transaction.status)}>
                           {transaction.status}
                         </span>
                       </td>
                     )}
-                    <td className="px-4 py-3 text-right text-sm font-medium whitespace-nowrap">
-                      <button className="text-blue-600 hover:text-blue-900 mr-3">View</button>
-                      <button className="text-gray-600 hover:text-gray-900">More</button>
+                    <td className="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
+                      <button className="text-teal-500 hover:text-teal-700 transition-colors duration-200 flex items-center space-x-1">
+                        <Eye className="w-4 h-4" />
+                        <span>View</span>
+                      </button>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
                   <td 
-                    colSpan={
-                      Object.values(viewOptions).filter(v => v).length + 1
-                    } 
-                    className="px-4 py-8 text-center text-sm text-gray-500"
+                    colSpan={Object.values(viewOptions).filter(v => v).length + 1} 
+                    className="px-6 py-12 text-center"
                   >
-                    No transactions found matching your criteria.
+                    <div className="flex flex-col items-center justify-center text-gray-500">
+                      <svg className="w-12 h-12 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <p className="text-sm">No transactions found matching your criteria.</p>
+                    </div>
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
-        </div>
+          </div>
+        
       </div>
 
       {/* Pagination */}
-      <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
-        <div className="text-sm text-gray-500">
-          Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
-          <span className="font-medium">
+      <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0 bg-white rounded-lg shadow-md border border-gray-200 p-6">
+        <div className="text-sm text-gray-600">
+          Showing <span className="font-semibold text-gray-900">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+          <span className="font-semibold text-gray-900">
             {Math.min(currentPage * itemsPerPage, filteredAndSortedTransactions.length)}
           </span> of{' '}
-          <span className="font-medium">{filteredAndSortedTransactions.length}</span> results
+          <span className="font-semibold text-gray-900">{filteredAndSortedTransactions.length}</span> results
         </div>
         
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-6">
           <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-600">Show</span>
             <select
@@ -887,7 +708,7 @@ const TransactionsPage: React.FC = () => {
                 setItemsPerPage(Number(e.target.value));
                 setCurrentPage(1);
               }}
-              className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+              className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
             >
               <option value={10}>10</option>
               <option value={20}>20</option>
@@ -901,7 +722,7 @@ const TransactionsPage: React.FC = () => {
             <button 
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
-              className="p-1 rounded-md text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-300"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -909,7 +730,6 @@ const TransactionsPage: React.FC = () => {
             </button>
             
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              // Show pages around current page
               let pageNum;
               if (totalPages <= 5) {
                 pageNum = i + 1;
@@ -925,9 +745,9 @@ const TransactionsPage: React.FC = () => {
                 <button
                   key={pageNum}
                   onClick={() => setCurrentPage(pageNum)}
-                  className={`w-8 h-8 rounded-md text-sm ${currentPage === pageNum
-                    ? 'bg-blue-500 text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
+                  className={`w-10 h-10 rounded-md text-sm font-medium border transition-all duration-200 ${currentPage === pageNum
+                    ? 'bg-teal-500 text-white border-teal-500 shadow-md'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 border-gray-300'
                   }`}
                 >
                   {pageNum}
@@ -937,10 +757,10 @@ const TransactionsPage: React.FC = () => {
             
             {totalPages > 5 && currentPage < totalPages - 2 && (
               <>
-                <span className="px-1">...</span>
+                <span className="px-2 text-gray-400">...</span>
                 <button
                   onClick={() => setCurrentPage(totalPages)}
-                  className="w-8 h-8 rounded-md text-sm text-gray-600 hover:bg-gray-100"
+                  className="w-10 h-10 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 border border-gray-300"
                 >
                   {totalPages}
                 </button>
@@ -950,7 +770,7 @@ const TransactionsPage: React.FC = () => {
             <button 
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
-              className="p-1 rounded-md text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-300"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -959,7 +779,24 @@ const TransactionsPage: React.FC = () => {
           </div>
         </div>
       </div>
-      </>
+
+      <style>{`
+        @keyframes dropdown-open {
+          from {
+            opacity: 0;
+            transform: translateY(-10px) scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        .animate-dropdown-open {
+          animation: dropdown-open 0.2s ease-out;
+        }
+      `}</style>
+    </div>
   );
 };
 

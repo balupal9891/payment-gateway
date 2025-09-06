@@ -305,7 +305,7 @@ const EditUserPage: React.FC = () => {
         </div>
 
         {/* Merchant Info Section */}
-        <div className="mt-8">
+        {/* <div className="mt-8">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Merchant Info : {user?.merchantId || '711809029705305760'}</h2>
             <p className="text-gray-600 text-sm mb-6">View and Copy Merchant Info</p>
@@ -374,10 +374,10 @@ const EditUserPage: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Test Merchant Info Section */}
-        <div className="mt-6">
+        {/* <div className="mt-6">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Test Merchant Info</h2>
             <p className="text-gray-600 text-sm mb-6">View and Copy Test Merchant Info</p>
@@ -436,7 +436,7 @@ const EditUserPage: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

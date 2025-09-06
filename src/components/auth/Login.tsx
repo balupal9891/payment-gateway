@@ -126,14 +126,7 @@ export default function LoginPage() {
         // console.log("Login response data:", data);
         console.log("User profile:", profile);
         setUserInStore({
-          profile: {
-            id: profile.userId,
-            name: profile.userName,
-            email: profile.email,
-            mobile: profile.mobile,
-            role: profile.role,
-            // permissions: response.data.data.permissions,
-          },
+          profile: profile,
           accessToken: data.data.accessToken,
           refreshToken: data.data.refreshToken,
         });

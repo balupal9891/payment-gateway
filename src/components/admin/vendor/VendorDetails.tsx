@@ -16,6 +16,8 @@ import {
   Save,
 } from "lucide-react";
 import apiClient from "../../../API/apiClient";
+import axios from "axios";
+import baseURL from "../../../API/baseUrl";
 // import Layout from "../../utils/Layout";
 
 // Define interfaces for the data structures
@@ -77,7 +79,7 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
       setLoading(true);
       setError(null);
 
-      const response = await apiClient(`/vendor/get-by-id/${vendorId}`);
+      const response = await axios.get(`${baseURL}/vendor/get-by-id/${vendorId}`);
 
       if (response.data.data) {
         setVendor(response.data.data);

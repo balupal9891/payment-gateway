@@ -59,10 +59,11 @@ const SuccessToast: React.FC<SuccessToastProps> = ({ isVisible, message, onClose
 // Main Component with responsive design
 const VendorManagement: React.FC = () => {
   const [currentView, setCurrentView] = useState<"list" | "edit">("list");
-  const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
+  const [selectedVendorId, setSelectedVendorId] = useState<any>(null);
 
-  const handleEditVendor = (vendorId: string) => {
+  const handleEditVendor = (vendorId: string | number) => {
     setSelectedVendorId(vendorId);
+    console.log("Selected Vendor ID:", vendorId);
     setCurrentView("edit");
   };
 
@@ -77,7 +78,8 @@ const VendorManagement: React.FC = () => {
         <div className="w-full max-w-full overflow-x-hidden">
           {currentView === "list" ? (
             <div className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6">
-              <VendorList onEditVendor={() => handleEditVendor(selectedVendorId as string)} />
+              <VendorList onEditVendor={handleEditVendor} />
+
             </div>
           ) : (
             <div className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6">
