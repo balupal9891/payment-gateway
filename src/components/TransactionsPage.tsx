@@ -17,18 +17,23 @@ import {
   CreditCard,
   Building,
   CheckCircle,
-  Eye
+  Mail,
+  Phone
 } from 'lucide-react';
+import baseURL from '../API/baseUrl';
+import { useUser } from '../store/slices/userSlice';
+import axios from 'axios';
+
 
 interface Transaction {
-  id: string;
-  receiptId: string;
-  customer: string;
-  date: string;
-  amount: number;
-  method: string;
-  gateway: string;
-  status: 'Success' | 'Failed' | 'Pending' | 'Refunded';
+  txnId: string;
+  amount: string;
+  paymentStatus: 'pending' | 'success' | 'failed' | 'refunded';
+  paymentSource: string;
+  fullName: string;
+  email: string;
+  mobile: string;
+  createdAt: string;
 }
 
 interface DropdownOption {
@@ -50,11 +55,11 @@ const Dropdown: React.FC<DropdownProps> = ({ options, selected, placeholder, onS
   <div className="relative">
     <button
       onClick={onToggle}
-      className="flex items-center space-x-2 px-4 py-2.5 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md border border-gray-300 transition-all duration-200 hover:shadow-sm bg-white"
+      className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md border border-gray-300 transition-all duration-200 hover:shadow-sm bg-white whitespace-nowrap"
     >
       {icon}
-      <span>{selected || placeholder}</span>
-      <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+      <span className="truncate">{selected || placeholder}</span>
+      <ChevronDown className={`w-4 h-4 transition-transform duration-200 flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
     </button>
 
     {isOpen && (
@@ -69,13 +74,13 @@ const Dropdown: React.FC<DropdownProps> = ({ options, selected, placeholder, onS
                 }}
                 className={`flex items-center justify-between w-full text-left px-4 py-2.5 text-sm transition-colors duration-150 ${
                   (selected === option.value || (option.value === 'all' && !selected))
-                    ? 'bg-teal-50 text-teal-700'
+                    ? 'bg-blue-50 text-blue-700'
                     : 'text-gray-700 hover:bg-gray-50'
                 }`}
               >
                 {option.label}
                 {(selected === option.value || (option.value === 'all' && !selected)) && (
-                  <Check className="w-4 h-4 text-teal-500" />
+                  <Check className="w-4 h-4 text-blue-500" />
                 )}
               </button>
             </li>
@@ -88,28 +93,34 @@ const Dropdown: React.FC<DropdownProps> = ({ options, selected, placeholder, onS
 
 const TransactionsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('Receipt ID');
+  const [selectedFilter, setSelectedFilter] = useState('Transaction ID');
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
 
+  // API states
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   // Filter states
-  const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
-  const [selectedGateway, setSelectedGateway] = useState<string | null>(null);
+  const [selectedSource, setSelectedSource] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [selectedSort, setSelectedSort] = useState<string>('Date');
   const [selectedOrder, setSelectedOrder] = useState<string>('Descending');
   const [dateFilter, setDateFilter] = useState<string>('All Time');
+  
+  const { user } = useUser();
 
   // View options state
   const [viewOptions, setViewOptions] = useState({
-    receiptId: true,
-    transactionId: true,
-    customer: true,
-    date: true,
+    txnId: true,
+    fullName: true,
+    email: true,
+    mobile: true,
     amount: true,
-    method: true,
-    gateway: true,
-    status: true
+    paymentSource: true,
+    paymentStatus: true,
+    createdAt: true
   });
 
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -129,31 +140,108 @@ const TransactionsPage: React.FC = () => {
     return () => document.removeEventListener('mousedown', onDocClick);
   }, []);
 
+  // Calculate dynamic column widths based on visible columns
+  const visibleColumnsCount = Object.values(viewOptions).filter(v => v).length;
+  
+  const getColumnWidth = (columnType: string) => {
+    // Base widths for different screen sizes
+    const baseWidths = {
+      mobile: {
+        txnId: 'w-20',
+        fullName: 'w-24', 
+        email: 'w-32',
+        mobile: 'w-20',
+        amount: 'w-20',
+        paymentSource: 'w-20',
+        paymentStatus: 'w-20',
+        createdAt: 'w-24'
+      },
+      tablet: {
+        txnId: 'w-28',
+        fullName: 'w-32',
+        email: 'w-40', 
+        mobile: 'w-24',
+        amount: 'w-24',
+        paymentSource: 'w-24',
+        paymentStatus: 'w-24',
+        createdAt: 'w-32'
+      },
+      desktop: {
+        txnId: visibleColumnsCount > 6 ? 'w-32' : 'w-36',
+        fullName: visibleColumnsCount > 6 ? 'w-36' : 'w-40',
+        email: visibleColumnsCount > 6 ? 'w-44' : 'w-48',
+        mobile: visibleColumnsCount > 6 ? 'w-28' : 'w-32',
+        amount: visibleColumnsCount > 6 ? 'w-24' : 'w-28',
+        paymentSource: visibleColumnsCount > 6 ? 'w-28' : 'w-32',
+        paymentStatus: visibleColumnsCount > 6 ? 'w-24' : 'w-28',
+        createdAt: visibleColumnsCount > 6 ? 'w-32' : 'w-36'
+      }
+    };
+    
+    return `${baseWidths.mobile[columnType as keyof typeof baseWidths.mobile]} sm:${baseWidths.tablet[columnType as keyof typeof baseWidths.tablet]} lg:${baseWidths.desktop[columnType as keyof typeof baseWidths.desktop]}`;
+  };
+
+  // Fetch transactions function
+  const fetchTransactions = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      let endpoint = '';
+      
+      // Determine endpoint based on user role
+      if (user?.role.roleName === 'Super Admin' || user?.role.roleName === 'Admin') {
+        endpoint = `${baseURL}/transaction/all`;
+      } else if (user?.vendorId) {
+        endpoint = `${baseURL}/transaction/vendor/${user.vendorId}`;
+      } else {
+        throw new Error('User role or vendor ID not found');
+      }
+      
+      // Mock API call - replace with actual axios call
+      const response = await axios.get(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${user?.token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log(response)
+      
+      // Mock data for demo
+      if(response?.data){
+        setTransactions(response.data.data);
+        setLoading(false);
+      }
+      
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Failed to fetch transactions');
+      console.error('Error fetching transactions:', err);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchTransactions();
+    }
+  }, [user]);
+
   // Dropdown options
   const dropdownOptions = {
-    methods: [
-      { value: 'all', label: 'All Methods' },
-      { value: 'UPI', label: 'UPI' },
-      { value: 'Net Banking', label: 'Net Banking' },
-      { value: 'Credit Card', label: 'Credit Card' },
-      { value: 'Debit Card', label: 'Debit Card' },
-      { value: 'Wallet', label: 'Wallet' },
-      { value: 'Cash on Delivery', label: 'Cash on Delivery' }
-    ],
-    gateways: [
-      { value: 'all', label: 'All Gateways' },
-      { value: 'Razorpay', label: 'Razorpay' },
-      { value: 'Paytm', label: 'Paytm' },
-      { value: 'Stripe', label: 'Stripe' },
-      { value: 'PayPal', label: 'PayPal' },
-      { value: 'CCAvenue', label: 'CCAvenue' }
+    sources: [
+      { value: 'all', label: 'All Sources' },
+      { value: 'payu', label: 'PayU' },
+      { value: 'razorpay', label: 'Razorpay' },
+      { value: 'stripe', label: 'Stripe' },
+      { value: 'paytm', label: 'Paytm' },
+      { value: 'phonepe', label: 'PhonePe' }
     ],
     statuses: [
       { value: 'all', label: 'All Statuses' },
-      { value: 'Success', label: 'Success' },
-      { value: 'Failed', label: 'Failed' },
-      { value: 'Pending', label: 'Pending' },
-      { value: 'Refunded', label: 'Refunded' }
+      { value: 'success', label: 'Success' },
+      { value: 'pending', label: 'Pending' },
+      { value: 'failed', label: 'Failed' },
+      { value: 'refunded', label: 'Refunded' }
     ],
     sorts: [
       { value: 'Date', label: 'Date' },
@@ -174,80 +262,6 @@ const TransactionsPage: React.FC = () => {
     ]
   };
 
-  // Sample transaction data
-  const transactions: Transaction[] = [
-    {
-      id: 'txn_1',
-      receiptId: 'rcpt_12345',
-      customer: 'john.doe@example.com',
-      date: '2023-05-15 10:30',
-      amount: 1250.00,
-      method: 'Credit Card',
-      gateway: 'Razorpay',
-      status: 'Success'
-    },
-    {
-      id: 'txn_2',
-      receiptId: 'rcpt_12346',
-      customer: 'jane.smith@example.com',
-      date: '2023-05-15 11:45',
-      amount: 899.00,
-      method: 'UPI',
-      gateway: 'Paytm',
-      status: 'Success'
-    },
-    {
-      id: 'txn_3',
-      receiptId: 'rcpt_12347',
-      customer: 'robert.johnson@example.com',
-      date: '2023-05-14 09:15',
-      amount: 2450.00,
-      method: 'Net Banking',
-      gateway: 'CCAvenue',
-      status: 'Pending'
-    },
-    {
-      id: 'txn_4',
-      receiptId: 'rcpt_12348',
-      customer: 'sarah.williams@example.com',
-      date: '2023-05-14 14:20',
-      amount: 599.00,
-      method: 'Debit Card',
-      gateway: 'Stripe',
-      status: 'Failed'
-    },
-    {
-      id: 'txn_5',
-      receiptId: 'rcpt_12349',
-      customer: 'michael.brown@example.com',
-      date: '2023-05-13 16:50',
-      amount: 1299.00,
-      method: 'Wallet',
-      gateway: 'Paytm',
-      status: 'Refunded'
-    },
-    {
-      id: 'txn_6',
-      receiptId: 'rcpt_12350',
-      customer: 'emily.davis@example.com',
-      date: '2023-05-12 12:30',
-      amount: 750.00,
-      method: 'UPI',
-      gateway: 'Razorpay',
-      status: 'Success'
-    },
-    {
-      id: 'txn_7',
-      receiptId: 'rcpt_12351',
-      customer: 'david.wilson@example.com',
-      date: '2023-05-11 15:45',
-      amount: 2100.00,
-      method: 'Credit Card',
-      gateway: 'Stripe',
-      status: 'Success'
-    },
-  ];
-
   // Filter and sort transactions
   const filteredAndSortedTransactions = useMemo(() => {
     let filtered = [...transactions];
@@ -257,28 +271,49 @@ const TransactionsPage: React.FC = () => {
       filtered = filtered.filter(transaction => {
         const searchValue = searchQuery.toLowerCase();
         switch (selectedFilter) {
-          case 'Receipt ID':
-            return transaction.receiptId.toLowerCase().includes(searchValue);
           case 'Transaction ID':
-            return transaction.id.toLowerCase().includes(searchValue);
+            return transaction.txnId.toLowerCase().includes(searchValue);
+          case 'Customer Name':
+            return transaction.fullName.toLowerCase().includes(searchValue);
+          case 'Email':
+            return transaction.email.toLowerCase().includes(searchValue);
+          case 'Mobile':
+            return transaction.mobile.includes(searchValue);
           default:
-            return transaction.customer.toLowerCase().includes(searchValue);
+            return transaction.txnId.toLowerCase().includes(searchValue);
         }
       });
     }
     
     // Apply filters
-    if (selectedMethod) filtered = filtered.filter(t => t.method === selectedMethod);
-    if (selectedGateway) filtered = filtered.filter(t => t.gateway === selectedGateway);
-    if (selectedStatus) filtered = filtered.filter(t => t.status === selectedStatus);
+    if (selectedSource) filtered = filtered.filter(t => t.paymentSource === selectedSource);
+    if (selectedStatus) filtered = filtered.filter(t => t.paymentStatus === selectedStatus);
     
     // Apply date filter (simplified for demo)
+    const now = new Date();
     const dateFilters = {
-      'Today': () => filtered.filter(t => t.date.includes('2023-05-15')),
-      'Yesterday': () => filtered.filter(t => t.date.includes('2023-05-14')),
-      'Last 7 Days': () => filtered.filter(t => 
-        ['2023-05-15', '2023-05-14', '2023-05-13', '2023-05-12', '2023-05-11'].some(date => t.date.includes(date))
-      )
+      'Today': () => filtered.filter(t => {
+        const txnDate = new Date(t.createdAt);
+        return txnDate.toDateString() === now.toDateString();
+      }),
+      'Yesterday': () => filtered.filter(t => {
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const txnDate = new Date(t.createdAt);
+        return txnDate.toDateString() === yesterday.toDateString();
+      }),
+      'Last 7 Days': () => filtered.filter(t => {
+        const weekAgo = new Date(now);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const txnDate = new Date(t.createdAt);
+        return txnDate >= weekAgo;
+      }),
+      'Last 30 Days': () => filtered.filter(t => {
+        const monthAgo = new Date(now);
+        monthAgo.setDate(monthAgo.getDate() - 30);
+        const txnDate = new Date(t.createdAt);
+        return txnDate >= monthAgo;
+      })
     };
     
     if (dateFilter !== 'All Time' && dateFilters[dateFilter as keyof typeof dateFilters]) {
@@ -291,16 +326,16 @@ const TransactionsPage: React.FC = () => {
       
       switch (selectedSort) {
         case 'Date':
-          aValue = new Date(a.date).getTime();
-          bValue = new Date(b.date).getTime();
+          aValue = new Date(a.createdAt).getTime();
+          bValue = new Date(b.createdAt).getTime();
           break;
         case 'Amount':
-          aValue = a.amount;
-          bValue = b.amount;
+          aValue = parseFloat(a.amount);
+          bValue = parseFloat(b.amount);
           break;
         default:
-          aValue = a.customer.toLowerCase();
-          bValue = b.customer.toLowerCase();
+          aValue = a.fullName.toLowerCase();
+          bValue = b.fullName.toLowerCase();
       }
       
       return selectedOrder === 'Ascending' 
@@ -309,7 +344,7 @@ const TransactionsPage: React.FC = () => {
     });
     
     return filtered;
-  }, [transactions, searchQuery, selectedFilter, selectedMethod, selectedGateway, selectedStatus, selectedSort, selectedOrder, dateFilter]);
+  }, [transactions, searchQuery, selectedFilter, selectedSource, selectedStatus, selectedSort, selectedOrder, dateFilter]);
 
   // Pagination logic
   const totalPages = Math.ceil(filteredAndSortedTransactions.length / itemsPerPage);
@@ -320,124 +355,123 @@ const TransactionsPage: React.FC = () => {
 
   const resetFilters = () => {
     setSearchQuery('');
-    setSelectedMethod(null);
-    setSelectedGateway(null);
+    setSelectedSource(null);
     setSelectedStatus(null);
     setSelectedSort('Date');
     setSelectedOrder('Descending');
     setDateFilter('All Time');
     setCurrentPage(1);
+    fetchTransactions();
   };
 
   const toggleViewOption = (option: keyof typeof viewOptions) => {
     setViewOptions(prev => ({ ...prev, [option]: !prev[option] }));
   };
 
-  const isFilterActive = searchQuery || selectedMethod || selectedGateway || selectedStatus || dateFilter !== 'All Time';
+  const isFilterActive = searchQuery || selectedSource || selectedStatus || dateFilter !== 'All Time';
 
   const getStatusBadgeClass = (status: string) => {
     const statusClasses = {
-      'Success': 'bg-green-100 text-green-800 border-green-200',
-      'Failed': 'bg-red-100 text-red-800 border-red-200',
-      'Pending': 'bg-amber-100 text-amber-800 border-amber-200',
-      'Refunded': 'bg-purple-100 text-purple-800 border-purple-200'
+      'success': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      'failed': 'bg-red-100 text-red-800 border-red-200',
+      'pending': 'bg-amber-100 text-amber-800 border-amber-200',
+      'refunded': 'bg-purple-100 text-purple-800 border-purple-200'
     };
-    return `px-3 py-1 inline-flex text-xs leading-5 font-medium rounded-full border transition-all duration-200 ${statusClasses[status as keyof typeof statusClasses]}`;
+    return `px-2.5 py-1 inline-flex text-xs leading-5 font-medium rounded-full border transition-all duration-200 ${statusClasses[status as keyof typeof statusClasses]}`;
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-IN', {
+      year: '2-digit',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatAmount = (amount: string) => {
+    return `₹${parseFloat(amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      {/* Page Title */}
-      <div className="mb-8">
-        <div className="flex items-center space-x-3 mb-2">
-          <Receipt className="w-8 h-8 text-teal-600" />
-          <h1 className="text-3xl font-bold text-gray-900">Transactions</h1>
-        </div>
-        <p className="text-gray-600 flex items-center space-x-2">
-          <CheckCircle className="w-4 h-4" />
-          <span>Monitor and analyze all transaction activities</span>
-        </p>
-      </div>
-
-      {/* Filters and Search Bar */}
-      <div ref={filtersRef} className="bg-white rounded-lg shadow-md border border-gray-200 p-6 mb-8 relative">
-        <div className="flex flex-wrap items-center gap-3 mb-4">
-          {/* Filter Dropdown */}
-          <div className="relative">
-            <select
-              value={selectedFilter}
-              onChange={(e) => setSelectedFilter(e.target.value)}
-              className="appearance-none bg-white border border-gray-300 rounded-md px-4 py-2.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-200"
-            >
-              <option value="Receipt ID">Receipt ID</option>
-              <option value="Transaction ID">Transaction ID</option>
-              <option value="Customer Email">Customer Email</option>
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-              <ChevronDown className="w-4 h-4 text-gray-400" />
-            </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-full px-4 sm:px-6 lg:px-8 py-6">
+        {/* Page Title */}
+        <div className="mb-6">
+          <div className="flex items-center space-x-3 mb-2">
+            <Receipt className="w-7 h-7 text-blue-600" />
+            <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>
           </div>
+          <p className="text-gray-600 flex items-center space-x-2">
+            <CheckCircle className="w-4 h-4" />
+            <span>Monitor and analyze all transaction activities</span>
+          </p>
+        </div>
 
-          {/* Search Bar */}
-          <div className="flex-1 max-w-md">
+        {/* Filters and Search Bar */}
+        <div ref={filtersRef} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6 relative">
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            {/* Filter Dropdown */}
             <div className="relative">
-              <input
-                type="text"
-                placeholder={`Search by ${selectedFilter}...`}
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-200"
-              />
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <select
+                value={selectedFilter}
+                onChange={(e) => setSelectedFilter(e.target.value)}
+                className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+              >
+                <option value="Transaction ID">Transaction ID</option>
+                <option value="Customer Name">Customer Name</option>
+                <option value="Email">Email</option>
+                <option value="Mobile">Mobile</option>
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              </div>
             </div>
+
+            {/* Search Bar */}
+            <div className="flex-1 max-w-md">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder={`Search by ${selectedFilter}...`}
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                />
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+              </div>
+            </div>
+
+            {/* Reset Button */}
+            <button
+              onClick={resetFilters}
+              disabled={!isFilterActive && !loading}
+              className={`flex items-center space-x-2 px-3 py-2 text-sm rounded-md border transition-all duration-200 ${(isFilterActive || loading)
+                ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50 border-gray-300' 
+                : 'text-gray-400 cursor-not-allowed border-gray-200'}`}
+            >
+              <RotateCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <span>Reset</span>
+            </button>
           </div>
 
-          {/* Reset Button */}
-          <button
-            onClick={resetFilters}
-            disabled={!isFilterActive}
-            className={`flex items-center space-x-2 px-4 py-2.5 text-sm rounded-md border transition-all duration-200 ${isFilterActive 
-              ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50 border-gray-300' 
-              : 'text-gray-400 cursor-not-allowed border-gray-200'}`}
-          >
-            <RotateCcw className="w-4 h-4" />
-            <span>Reset</span>
-          </button>
-
-          <button className="lg:hidden flex items-center space-x-1 px-4 py-2.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-md border border-gray-300">
-            <Filter className="w-4 h-4" />
-            <span>Filters</span>
-          </button>
-        </div>
-
-        {/* Filter Options and Actions */}
-        <div className="mt-6">
-          <div className="flex flex-wrap items-center gap-3">
+          {/* Filter Options and Actions */}
+          <div className="flex flex-wrap items-center gap-2">
             <Dropdown
-              options={dropdownOptions.methods}
-              selected={selectedMethod}
-              placeholder="All Methods"
+              options={dropdownOptions.sources}
+              selected={selectedSource}
+              placeholder="All Sources"
               onSelect={(value) => {
-                setSelectedMethod(value);
+                setSelectedSource(value);
                 setCurrentPage(1);
               }}
-              isOpen={openDropdown === 'method'}
-              onToggle={() => toggleDropdown('method')}
-            />
-
-            <Dropdown
-              options={dropdownOptions.gateways}
-              selected={selectedGateway}
-              placeholder="All Gateways"
-              onSelect={(value) => {
-                setSelectedGateway(value);
-                setCurrentPage(1);
-              }}
-              isOpen={openDropdown === 'gateway'}
-              onToggle={() => toggleDropdown('gateway')}
+              isOpen={openDropdown === 'source'}
+              onToggle={() => toggleDropdown('source')}
             />
 
             <Dropdown
@@ -465,26 +499,24 @@ const TransactionsPage: React.FC = () => {
               onToggle={() => toggleDropdown('date')}
             />
 
-            <div className="flex space-x-2">
-              <Dropdown
-                options={dropdownOptions.sorts}
-                selected={selectedSort}
-                placeholder="Sort by"
-                onSelect={(value) => setSelectedSort(value || 'Date')}
-                icon={<ArrowUpDown className="w-4 h-4" />}
-                isOpen={openDropdown === 'sort'}
-                onToggle={() => toggleDropdown('sort')}
-              />
+            <Dropdown
+              options={dropdownOptions.sorts}
+              selected={selectedSort}
+              placeholder="Sort by"
+              onSelect={(value) => setSelectedSort(value || 'Date')}
+              icon={<ArrowUpDown className="w-4 h-4" />}
+              isOpen={openDropdown === 'sort'}
+              onToggle={() => toggleDropdown('sort')}
+            />
 
-              <Dropdown
-                options={dropdownOptions.orders}
-                selected={selectedOrder}
-                placeholder="Order"
-                onSelect={(value) => setSelectedOrder(value || 'Descending')}
-                isOpen={openDropdown === 'order'}
-                onToggle={() => toggleDropdown('order')}
-              />
-            </div>
+            <Dropdown
+              options={dropdownOptions.orders}
+              selected={selectedOrder}
+              placeholder="Order"
+              onSelect={(value) => setSelectedOrder(value || 'Descending')}
+              isOpen={openDropdown === 'order'}
+              onToggle={() => toggleDropdown('order')}
+            />
 
             <div className="flex-grow"></div>
 
@@ -492,7 +524,7 @@ const TransactionsPage: React.FC = () => {
             <div className="relative">
               <button
                 onClick={() => toggleDropdown('view')}
-                className="flex items-center space-x-2 px-4 py-2.5 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md border border-gray-300 bg-white"
+                className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md border border-gray-300 bg-white"
               >
                 <Grid3X3 className="w-4 h-4" />
                 <span>View</span>
@@ -510,12 +542,17 @@ const TransactionsPage: React.FC = () => {
                         <li key={key}>
                           <button
                             onClick={() => toggleViewOption(key as keyof typeof viewOptions)}
-                            className="flex items-center justify-between w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-md"
+                            className="flex items-center justify-between w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md"
                           >
                             <span className="capitalize">
-                              {key.replace(/([A-Z])/g, ' $1').trim()}
+                              {key === 'txnId' ? 'Transaction ID' : 
+                               key === 'fullName' ? 'Customer Name' :
+                               key === 'paymentSource' ? 'Payment Source' :
+                               key === 'paymentStatus' ? 'Status' :
+                               key === 'createdAt' ? 'Date & Time' :
+                               key.charAt(0).toUpperCase() + key.slice(1)}
                             </span>
-                            {value && <Check className="w-4 h-4 text-teal-500" />}
+                            {value && <Check className="w-4 h-4 text-blue-500" />}
                           </button>
                         </li>
                       ))}
@@ -525,257 +562,293 @@ const TransactionsPage: React.FC = () => {
               )}
             </div>
 
-            <button className="flex items-center space-x-2 px-4 py-2.5 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md border border-gray-300 bg-white">
+            <button className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md border border-gray-300 bg-white">
               <Download className="w-4 h-4" />
-              <span>Download</span>
+              <span>Export</span>
+            </button>
+
+            <button 
+              onClick={fetchTransactions}
+              disabled={loading}
+              className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md border border-gray-300 bg-white disabled:opacity-50"
+            >
+              <RotateCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
             </button>
           </div>
         </div>
-      </div>
 
-      {/* Transactions Table */}
-      <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden mb-8 h-[80vh] flex flex-col">
-          <div className="overflow-x-auto overflow-y-auto flex-grow">
-
-          <table className="w-full">
-            <thead className="bg-slate-50 sticky top-0 z-20">
-              <tr>
-                {viewOptions.receiptId && (
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
-                    <div className="flex items-center space-x-2">
-                      <Receipt className="w-4 h-4" />
-                      <span>Receipt ID</span>
-                    </div>
-                  </th>
-                )}
-                {viewOptions.transactionId && (
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
-                    <div className="flex items-center space-x-2">
-                      <Hash className="w-4 h-4" />
-                      <span>Transaction ID</span>
-                    </div>
-                  </th>
-                )}
-                {viewOptions.customer && (
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
-                    <div className="flex items-center space-x-2">
-                      <User className="w-4 h-4" />
-                      <span>Customer</span>
-                    </div>
-                  </th>
-                )}
-                {viewOptions.date && (
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
-                    <div className="flex items-center space-x-2">
-                      <CalendarDays className="w-4 h-4" />
-                      <span>Date & Time</span>
-                    </div>
-                  </th>
-                )}
-                {viewOptions.amount && (
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
-                    <div className="flex items-center space-x-2">
-                      <DollarSign className="w-4 h-4" />
-                      <span>Amount</span>
-                    </div>
-                  </th>
-                )}
-                {viewOptions.method && (
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
-                    <div className="flex items-center space-x-2">
-                      <CreditCard className="w-4 h-4" />
-                      <span>Payment Method</span>
-                    </div>
-                  </th>
-                )}
-                {viewOptions.gateway && (
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
-                    <div className="flex items-center space-x-2">
-                      <Building className="w-4 h-4" />
-                      <span>Gateway</span>
-                    </div>
-                  </th>
-                )}
-                {viewOptions.status && (
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4" />
-                      <span>Status</span>
-                    </div>
-                  </th>
-                )}
-                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-100">
-              {paginatedTransactions.length > 0 ? (
-                paginatedTransactions.map((transaction, index) => (
-                  <tr 
-                    key={transaction.id} 
-                    className={`hover:bg-gray-50 transition-colors duration-200 ${
-                      index !== paginatedTransactions.length - 1 ? 'border-b border-gray-100' : ''
-                    }`}
-                  >
-                    {viewOptions.receiptId && (
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
-                        {transaction.receiptId}
-                      </td>
-                    )}
-                    {viewOptions.transactionId && (
-                      <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
-                        {transaction.id}
-                      </td>
-                    )}
-                    {viewOptions.customer && (
-                      <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
-                        {transaction.customer}
-                      </td>
-                    )}
-                    {viewOptions.date && (
-                      <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
-                        {transaction.date}
-                      </td>
-                    )}
-                    {viewOptions.amount && (
-                      <td className="px-6 py-4 text-sm text-gray-900 font-semibold whitespace-nowrap">
-                        ₹{transaction.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                      </td>
-                    )}
-                    {viewOptions.method && (
-                      <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
-                        {transaction.method}
-                      </td>
-                    )}
-                    {viewOptions.gateway && (
-                      <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
-                        {transaction.gateway}
-                      </td>
-                    )}
-                    {viewOptions.status && (
-                      <td className="px-6 py-4">
-                        <span className={getStatusBadgeClass(transaction.status)}>
-                          {transaction.status}
-                        </span>
-                      </td>
-                    )}
-                    <td className="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
-                      <button className="text-teal-500 hover:text-teal-700 transition-colors duration-200 flex items-center space-x-1">
-                        <Eye className="w-4 h-4" />
-                        <span>View</span>
-                      </button>
+        {/* Transactions Table */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  {viewOptions.txnId && (
+                    <th className={`px-2 sm:px-3 lg:px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider ${getColumnWidth('txnId')}`}>
+                      <div className="flex items-center space-x-1">
+                        <Hash className="w-3 h-3" />
+                        <span className="hidden sm:inline">Txn ID</span>
+                        <span className="sm:hidden">ID</span>
+                      </div>
+                    </th>
+                  )}
+                  {viewOptions.fullName && (
+                    <th className={`px-2 sm:px-3 lg:px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider ${getColumnWidth('fullName')}`}>
+                      <div className="flex items-center space-x-1">
+                        <User className="w-3 h-3" />
+                        <span>Customer</span>
+                      </div>
+                    </th>
+                  )}
+                  {viewOptions.email && (
+                    <th className={`px-2 sm:px-3 lg:px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider ${getColumnWidth('email')}`}>
+                      <div className="flex items-center space-x-1">
+                        <Mail className="w-3 h-3" />
+                        <span>Email</span>
+                      </div>
+                    </th>
+                  )}
+                  {viewOptions.mobile && (
+                    <th className={`px-2 sm:px-3 lg:px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider ${getColumnWidth('mobile')}`}>
+                      <div className="flex items-center space-x-1">
+                        <Phone className="w-3 h-3" />
+                        <span>Mobile</span>
+                      </div>
+                    </th>
+                  )}
+                  {viewOptions.amount && (
+                    <th className={`px-2 sm:px-3 lg:px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider ${getColumnWidth('amount')}`}>
+                      <div className="flex items-center space-x-1">
+                        <DollarSign className="w-3 h-3" />
+                        <span>Amount</span>
+                      </div>
+                    </th>
+                  )}
+                  {viewOptions.paymentSource && (
+                    <th className={`px-2 sm:px-3 lg:px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider ${getColumnWidth('paymentSource')}`}>
+                      <div className="flex items-center space-x-1">
+                        <CreditCard className="w-3 h-3" />
+                        <span>Source</span>
+                      </div>
+                    </th>
+                  )}
+                  {viewOptions.paymentStatus && (
+                    <th className={`px-2 sm:px-3 lg:px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider ${getColumnWidth('paymentStatus')}`}>
+                      <div className="flex items-center space-x-1">
+                        <CheckCircle className="w-3 h-3" />
+                        <span>Status</span>
+                      </div>
+                    </th>
+                  )}
+                  {viewOptions.createdAt && (
+                    <th className={`px-2 sm:px-3 lg:px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider ${getColumnWidth('createdAt')}`}>
+                      <div className="flex items-center space-x-1">
+                        <CalendarDays className="w-3 h-3" />
+                        <span>Date</span>
+                      </div>
+                    </th>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-100">
+                {loading ? (
+                  <tr>
+                    <td 
+                      colSpan={Object.values(viewOptions).filter(v => v).length} 
+                      className="px-6 py-12 text-center"
+                    >
+                      <div className="flex flex-col items-center justify-center text-gray-500">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-4"></div>
+                        <p className="text-sm">Loading transactions...</p>
+                      </div>
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td 
-                    colSpan={Object.values(viewOptions).filter(v => v).length + 1} 
-                    className="px-6 py-12 text-center"
-                  >
-                    <div className="flex flex-col items-center justify-center text-gray-500">
-                      <svg className="w-12 h-12 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <p className="text-sm">No transactions found matching your criteria.</p>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                ) : error ? (
+                  <tr>
+                    <td 
+                      colSpan={Object.values(viewOptions).filter(v => v).length} 
+                      className="px-6 py-12 text-center"
+                    >
+                      <div className="flex flex-col items-center justify-center text-red-500">
+                        <svg className="w-12 h-12 mb-4 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p className="text-sm mb-2">{error}</p>
+                        <button 
+                          onClick={fetchTransactions}
+                          className="px-4 py-2 text-sm bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : paginatedTransactions.length > 0 ? (
+                  paginatedTransactions.map((transaction, index) => (
+                    <tr 
+                      key={transaction.txnId} 
+                      className="hover:bg-gray-50 transition-colors duration-150"
+                    >
+                      {viewOptions.txnId && (
+                        <td className="px-2 sm:px-3 lg:px-4 py-3 text-sm font-medium text-gray-900">
+                          <div className="truncate">{transaction.txnId}</div>
+                        </td>
+                      )}
+                      {viewOptions.fullName && (
+                        <td className="px-2 sm:px-3 lg:px-4 py-3 text-sm text-gray-900 font-medium">
+                          <div className="truncate">{transaction.fullName}</div>
+                        </td>
+                      )}
+                      {viewOptions.email && (
+                        <td className="px-2 sm:px-3 lg:px-4 py-3 text-sm text-gray-600">
+                          <a href={`mailto:${transaction.email}`} className="hover:text-blue-600 transition-colors truncate block">
+                            {transaction.email}
+                          </a>
+                        </td>
+                      )}
+                      {viewOptions.mobile && (
+                        <td className="px-2 sm:px-3 lg:px-4 py-3 text-sm text-gray-600">
+                          <a href={`tel:${transaction.mobile}`} className="hover:text-blue-600 transition-colors truncate block">
+                            {transaction.mobile}
+                          </a>
+                        </td>
+                      )}
+                      {viewOptions.amount && (
+                        <td className="px-2 sm:px-3 lg:px-4 py-3 text-sm text-gray-900 font-semibold">
+                          <div className="truncate">{formatAmount(transaction.amount)}</div>
+                        </td>
+                      )}
+                      {viewOptions.paymentSource && (
+                        <td className="px-2 sm:px-3 lg:px-4 py-3 text-sm text-gray-600">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0"></div>
+                            <span className="capitalize truncate">{transaction.paymentSource}</span>
+                          </div>
+                        </td>
+                      )}
+                      {viewOptions.paymentStatus && (
+                        <td className="px-2 sm:px-3 lg:px-4 py-3">
+                          <span className={getStatusBadgeClass(transaction.paymentStatus)}>
+                            <span className="capitalize">{transaction.paymentStatus}</span>
+                          </span>
+                        </td>
+                      )}
+                      {viewOptions.createdAt && (
+                        <td className="px-2 sm:px-3 lg:px-4 py-3 text-sm text-gray-600">
+                          <div className="truncate">{formatDate(transaction.createdAt)}</div>
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td 
+                      colSpan={Object.values(viewOptions).filter(v => v).length} 
+                      className="px-6 py-12 text-center"
+                    >
+                      <div className="flex flex-col items-center justify-center text-gray-500">
+                        <svg className="w-12 h-12 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <p className="text-sm">No transactions found matching your criteria.</p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
-        
-      </div>
-
-      {/* Pagination */}
-      <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0 bg-white rounded-lg shadow-md border border-gray-200 p-6">
-        <div className="text-sm text-gray-600">
-          Showing <span className="font-semibold text-gray-900">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
-          <span className="font-semibold text-gray-900">
-            {Math.min(currentPage * itemsPerPage, filteredAndSortedTransactions.length)}
-          </span> of{' '}
-          <span className="font-semibold text-gray-900">{filteredAndSortedTransactions.length}</span> results
         </div>
-        
-        <div className="flex items-center space-x-6">
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-600">Show</span>
-            <select
-              value={itemsPerPage}
-              onChange={(e) => {
-                setItemsPerPage(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-              className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-            >
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-            <span className="text-sm text-gray-600">entries</span>
+
+        {/* Pagination */}
+        <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0 bg-white rounded-lg shadow-sm border border-gray-200 p-4 mt-6">
+          <div className="text-sm text-gray-600">
+            Showing <span className="font-medium text-gray-900">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+            <span className="font-medium text-gray-900">
+              {Math.min(currentPage * itemsPerPage, filteredAndSortedTransactions.length)}
+            </span> of{' '}
+            <span className="font-medium text-gray-900">{filteredAndSortedTransactions.length}</span> results
           </div>
           
-          <div className="flex items-center space-x-1">
-            <button 
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-300"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
+          <div className="flex items-center space-x-6">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-600">Show</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span className="text-sm text-gray-600">entries</span>
+            </div>
             
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let pageNum;
-              if (totalPages <= 5) {
-                pageNum = i + 1;
-              } else if (currentPage <= 3) {
-                pageNum = i + 1;
-              } else if (currentPage >= totalPages - 2) {
-                pageNum = totalPages - 4 + i;
-              } else {
-                pageNum = currentPage - 2 + i;
-              }
+            <div className="flex items-center space-x-1">
+              <button 
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-300"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
               
-              return (
-                <button
-                  key={pageNum}
-                  onClick={() => setCurrentPage(pageNum)}
-                  className={`w-10 h-10 rounded-md text-sm font-medium border transition-all duration-200 ${currentPage === pageNum
-                    ? 'bg-teal-500 text-white border-teal-500 shadow-md'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 border-gray-300'
-                  }`}
-                >
-                  {pageNum}
-                </button>
-              );
-            })}
-            
-            {totalPages > 5 && currentPage < totalPages - 2 && (
-              <>
-                <span className="px-2 text-gray-400">...</span>
-                <button
-                  onClick={() => setCurrentPage(totalPages)}
-                  className="w-10 h-10 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 border border-gray-300"
-                >
-                  {totalPages}
-                </button>
-              </>
-            )}
-            
-            <button 
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className="p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-300"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`w-10 h-10 rounded-md text-sm font-medium border transition-all duration-200 ${currentPage === pageNum
+                      ? 'bg-blue-500 text-white border-blue-500 shadow-md'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 border-gray-300'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+              
+              {totalPages > 5 && currentPage < totalPages - 2 && (
+                <>
+                  <span className="px-2 text-gray-400">...</span>
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    className="w-10 h-10 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 border border-gray-300"
+                  >
+                    {totalPages}
+                  </button>
+                </>
+              )}
+              
+              <button 
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-300"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -794,6 +867,44 @@ const TransactionsPage: React.FC = () => {
 
         .animate-dropdown-open {
           animation: dropdown-open 0.2s ease-out;
+        }
+        
+        /* Ensure table cells don't expand beyond their set widths */
+        table {
+          table-layout: fixed;
+        }
+        
+        /* Responsive text truncation */
+        .truncate {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        
+        /* Better responsive handling for smaller screens */
+        @media (max-width: 640px) {
+          .w-20 { width: 5rem; }
+          .w-24 { width: 6rem; }
+          .w-28 { width: 7rem; }
+          .w-32 { width: 8rem; }
+        }
+        
+        @media (min-width: 641px) and (max-width: 1024px) {
+          .sm\\:w-24 { width: 6rem; }
+          .sm\\:w-28 { width: 7rem; }
+          .sm\\:w-32 { width: 8rem; }
+          .sm\\:w-36 { width: 9rem; }
+          .sm\\:w-40 { width: 10rem; }
+        }
+        
+        @media (min-width: 1025px) {
+          .lg\\:w-24 { width: 6rem; }
+          .lg\\:w-28 { width: 7rem; }
+          .lg\\:w-32 { width: 8rem; }
+          .lg\\:w-36 { width: 9rem; }
+          .lg\\:w-40 { width: 10rem; }
+          .lg\\:w-44 { width: 11rem; }
+          .lg\\:w-48 { width: 12rem; }
         }
       `}</style>
     </div>

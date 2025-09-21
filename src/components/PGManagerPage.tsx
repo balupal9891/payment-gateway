@@ -144,7 +144,7 @@ const PGManagerPage: React.FC = () => {
     const fetchGateways = async () => {
       try {
         setIsLoading(true);
-        const response = await axios.get(`${baseURL}/vendor/get-vendor-gateways`, {
+        const response = await axios.get(`${baseURL}/vendorInfo/get-vendor-gateways`, {
           headers: {
             Authorization: `Bearer ${getAccessToken()}`
           }

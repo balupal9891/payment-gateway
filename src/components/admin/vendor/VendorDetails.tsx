@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Edit,
   Building2,
@@ -6,35 +6,36 @@ import {
   Phone,
   CreditCard,
   MapPin,
-  Banknote,
   ChevronLeft,
   Loader2,
   AlertCircle,
   CheckCircle,
-  Search,
   X,
   Save,
+  Globe,
+  Upload,
+  FileText,
+  Trash2,
+  Shield,
+  ShieldCheck,
+  Building,
+  Briefcase,
+  Store,
 } from "lucide-react";
 import apiClient from "../../../API/apiClient";
 import axios from "axios";
 import baseURL from "../../../API/baseUrl";
+import { CheckmarkIcon } from "react-hot-toast";
 // import Layout from "../../utils/Layout";
 
 // Define interfaces for the data structures
-interface ProductPlan {
-  name: string;
-  region: string;
-  planType: string;
-  price: number;
-  data: number;
-  validity: number;
-}
-
-interface PlanCommission {
-  localPlanId: string;
-  portalCommissionRate: number;
-  vendorCommissionRate: number;
-  productPlan: ProductPlan;
+interface KYCDocument {
+  docId: string;
+  docName: string;
+  docNumber: string;
+  docImage: string;
+  docPath: string; // Base64 or URL
+  isVerified: boolean;
 }
 
 interface Vendor {
@@ -43,16 +44,12 @@ interface Vendor {
   vendorAddress: string;
   email: string;
   mobileNumber: string;
-  gstin: string;
-  pan: string;
+  businessName: string;
+  businessType: string;
+  businessNature: string;
+  domainName: string;
   remark: string;
-  defaultPortalCommission: number;
-  defaultVendorCommission: number;
-  bankName: string;
-  branchName: string;
-  ifsc: string;
-  accountNumber: string;
-  planCommission?: PlanCommission[];
+  kycDocuments?: KYCDocument[];
 }
 
 interface VendorDetailsProps {
@@ -68,11 +65,18 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
   const [editForm, setEditForm] = useState<Partial<Vendor>>({});
   const [saving, setSaving] = useState<boolean>(false);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
-  
-  // Plan commission pagination and search
-  const [planSearchTerm, setPlanSearchTerm] = useState<string>("");
-  const [currentPlanPage, setCurrentPlanPage] = useState<number>(1);
-  const plansPerPage = 5;
+
+  // KYC Document management
+  const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
+  const [newDocument, setNewDocument] = useState<{
+    docName: string;
+    docNumber: string;
+    docImage: File | null;
+  }>({
+    docName: '',
+    docNumber: '',
+    docImage: null
+  });
 
   const fetchVendorDetails = async (): Promise<void> => {
     try {
@@ -106,15 +110,11 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
         vendorAddress: editForm.vendorAddress,
         email: editForm.email,
         mobileNumber: editForm.mobileNumber,
-        gstin: editForm.gstin,
-        pan: editForm.pan,
+        businessName: editForm.businessName,
+        businessType: editForm.businessType,
+        businessNature: editForm.businessNature,
+        domainName: editForm.domainName,
         remark: editForm.remark,
-        defaultPortalCommission: editForm.defaultPortalCommission,
-        defaultVendorCommission: editForm.defaultVendorCommission,
-        bankName: editForm.bankName,
-        branchName: editForm.branchName,
-        ifsc: editForm.ifsc,
-        accountNumber: editForm.accountNumber,
       };
 
       const response = await apiClient.patch('/vendor/update', updateData);
@@ -125,7 +125,7 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
       }
-    } catch (err : any) {
+    } catch (err: any) {
       setError(err.message || "Failed to update vendor");
       console.error("Error updating vendor:", err);
     } finally {
@@ -146,33 +146,104 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
     }));
   };
 
-  // Filter and paginate plan commissions
-  const filteredPlans = useMemo(() => {
-    if (!vendor?.planCommission) return [];
-    
-    return vendor.planCommission.filter(commission =>
-      commission.productPlan.name.toLowerCase().includes(planSearchTerm.toLowerCase()) ||
-      commission.productPlan.region.toLowerCase().includes(planSearchTerm.toLowerCase()) ||
-      commission.productPlan.planType.toLowerCase().includes(planSearchTerm.toLowerCase())
-    );
-  }, [vendor?.planCommission, planSearchTerm]);
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setNewDocument(prev => ({ ...prev, docImage: file }));
+    }
+  };
 
-  const paginatedPlans = useMemo(() => {
-    const startIndex = (currentPlanPage - 1) * plansPerPage;
-    return filteredPlans.slice(startIndex, startIndex + plansPerPage);
-  }, [filteredPlans, currentPlanPage, plansPerPage]);
+  const handleAddKYCDocument = async (): Promise<void> => {
+    if (!newDocument.docName || !newDocument.docNumber || !newDocument.docImage) {
+      setError("Please fill all document fields and upload an image");
+      return;
+    }
 
-  const totalPlanPages = Math.ceil(filteredPlans.length / plansPerPage);
+    try {
+      setUploadingDoc(newDocument.docName);
+
+      const formData = new FormData();
+      formData.append('vendorId', vendorId);
+      formData.append('docName', newDocument.docName);
+      formData.append('docNumber', newDocument.docNumber);
+      formData.append('docImage', newDocument.docImage);
+
+      const response = await apiClient.post('/vendor/upload-doc', formData, {
+        headers: { 'Content-Type': 'multipart/form-data', }
+      });
+
+      if (response.data) {
+        // Refresh vendor details to show new document
+        await fetchVendorDetails();
+        setNewDocument({ docName: '', docNumber: '', docImage: null });
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to add KYC document");
+    } finally {
+      setUploadingDoc(null);
+    }
+  };
+
+  const handleVerifyDocument = async (docId: string): Promise<void> => {
+    try {
+      const response = await apiClient.post(`/vendor/verify-doc/${docId}`, {
+        vendorId: vendorId
+      });
+      console.log(response);
+      if (response.data) {
+        fetchVendorDetails()
+      }
+      // if (response.data) {
+      //   // Update local state
+      //   setVendor(prev => {
+      //     if (!prev) return prev;
+      //     return {
+      //       ...prev,
+      //       kycDocuments: prev.kycDocuments?.map(doc => 
+      //         doc.docId === docId ? { ...doc, isVerified } : doc
+      //       ) || []
+      //     };
+      //   });
+      //   setSaveSuccess(true);
+      //   setTimeout(() => setSaveSuccess(false), 2000);
+      // }
+    } catch (err: any) {
+      setError(err.message || "Failed to update document verification");
+    }
+  };
+
+  const handleDeleteDocument = async (docId: string): Promise<void> => {
+    if (!window.confirm("Are you sure you want to delete this document?")) {
+      return;
+    }
+
+    try {
+      const response = await apiClient.delete(`/vendor/delete-doc/${docId}`);
+
+      if (response.data) {
+        // Update local state
+        setVendor(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            kycDocuments: prev.kycDocuments?.filter(doc => doc.docId !== docId) || []
+          };
+        });
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 2000);
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to delete document");
+    }
+  };
 
   useEffect(() => {
     if (vendorId) {
       fetchVendorDetails();
     }
   }, [vendorId]);
-
-  useEffect(() => {
-    setCurrentPlanPage(1);
-  }, [planSearchTerm]);
 
   if (loading) {
     return (
@@ -233,8 +304,20 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
     </div>
   );
 
+  const docNames = [
+    "Aadhaar Card",
+    "pan",
+    "Passport",
+    "Driving License",
+    "Voter ID",
+    "Business License",
+    "gst",
+    "Bank Statement",
+    "Other"
+  ];
+
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Back Button - Hidden on mobile when editing (floating button used instead) */}
       <button
         onClick={onBack}
@@ -248,7 +331,21 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
       {saveSuccess && (
         <div className="bg-green-50 border border-green-200 text-green-800 px-3 sm:px-4 py-2 sm:py-3 rounded-lg flex items-center text-sm sm:text-base">
           <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2 flex-shrink-0" />
-          <span>Vendor details updated successfully!</span>
+          <span>Changes saved successfully!</span>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-800 px-3 sm:px-4 py-2 sm:py-3 rounded-lg flex items-center text-sm sm:text-base">
+          <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2 flex-shrink-0" />
+          <span>{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className="ml-auto text-red-600 hover:text-red-800"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
@@ -267,7 +364,7 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
                 <p className="text-sm sm:text-base text-gray-500">Vendor ID: {vendor.vendorId}</p>
               </div>
             </div>
-            
+
             {/* Action Buttons */}
             <div className="flex items-center space-x-2 sm:space-x-3 w-full sm:w-auto">
               {isEditing ? (
@@ -306,9 +403,8 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
 
         {/* Content */}
         <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
-          {/* Basic and Tax Information - Stack on mobile, side by side on larger screens */}
+          {/* Basic Information */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
-            {/* Basic Information */}
             <div className="space-y-4 sm:space-y-6">
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900 border-b border-gray-200 pb-2">
                 Basic Information
@@ -334,61 +430,176 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
               </div>
             </div>
 
-            {/* Tax & Legal Information */}
+            {/* Business Information */}
             <div className="space-y-4 sm:space-y-6">
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900 border-b border-gray-200 pb-2">
-                Tax & Legal Information
+                Business Information
               </h2>
               <div className="space-y-3 sm:space-y-4">
                 {renderField(
-                  <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-teal-500 flex-shrink-0" />,
-                  "GSTIN",
-                  "gstin"
+                  <Building className="w-4 h-4 sm:w-5 sm:h-5 text-teal-500 flex-shrink-0" />,
+                  "Business Name",
+                  "businessName"
                 )}
                 {renderField(
-                  <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-teal-500 flex-shrink-0" />,
-                  "PAN",
-                  "pan"
+                  <Store className="w-4 h-4 sm:w-5 sm:h-5 text-teal-500 flex-shrink-0" />,
+                  "Business Type",
+                  "businessType"
+                )}
+                {renderField(
+                  <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 text-teal-500 flex-shrink-0" />,
+                  "Business Nature",
+                  "businessNature"
                 )}
               </div>
             </div>
           </div>
 
-          {/* Banking Information */}
+          {/* Website URL Section */}
           <div>
             <h2 className="text-lg sm:text-xl font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 sm:mb-6">
-              Banking Information
+              Website URL
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+            <div className="max-w-md">
               {renderField(
-                <Banknote className="w-4 h-4 sm:w-5 sm:h-5 text-teal-500 flex-shrink-0" />,
-                "Bank Name",
-                "bankName"
+                <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-teal-500 flex-shrink-0" />,
+                "Website URL",
+                "domainName",
+                "url"
               )}
-              {renderField(
-                <Banknote className="w-4 h-4 sm:w-5 sm:h-5 text-teal-500 flex-shrink-0" />,
-                "Branch Name",
-                "branchName"
-              )}
-              {renderField(
-                <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-teal-500 flex-shrink-0" />,
-                "IFSC Code",
-                "ifsc"
-              )}
-              {renderField(
-                <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-teal-500 flex-shrink-0" />,
-                "Account Number",
-                "accountNumber"
-              )}
-              {renderField(
-                <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-teal-500 flex-shrink-0" />,
-                "Default Portal Commission",
-                "defaultPortalCommission"
-              )}
-              {renderField(
-                <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-teal-500 flex-shrink-0" />,
-                "Default Vendor Commission",
-                "defaultVendorCommission"
+            </div>
+          </div>
+
+          {/* Tax & Legal Information with KYC Documents */}
+          <div>
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 sm:mb-6">
+              Tax & Legal Information
+            </h2>
+
+            {/* KYC Documents Section */}
+            <div className="bg-gray-50 rounded-lg p-4 sm:p-6">
+              <h3 className="text-md sm:text-lg font-medium text-gray-900 mb-4 flex items-center">
+                <FileText className="w-5 h-5 text-teal-500 mr-2" />
+                KYC Documents
+              </h3>
+
+              {/* Add New Document Form */}
+              <div className="bg-white rounded-lg p-4 border border-gray-200 mb-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Add New Document</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <select
+                    value={newDocument.docName}
+                    onChange={(e) => setNewDocument(prev => ({ ...prev, docName: e.target.value }))}
+                    className="p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm"
+                  >
+                    <option value="">Select Document Type</option>
+                    {docNames.map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+
+                  <input
+                    type="text"
+                    placeholder="Document Number"
+                    value={newDocument.docNumber}
+                    onChange={(e) => setNewDocument(prev => ({ ...prev, docNumber: e.target.value }))}
+                    className="p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm"
+                  />
+
+                  <div className="flex space-x-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      id="document-upload"
+                    />
+                    <label
+                      htmlFor="document-upload"
+                      className="flex-1 flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 text-sm"
+                    >
+                      <Upload className="w-4 h-4 mr-1" />
+                      {newDocument.docImage ? 'File Selected' : 'Upload'}
+                    </label>
+
+                    <button
+                      onClick={handleAddKYCDocument}
+                      disabled={uploadingDoc !== null}
+                      className="px-4 py-2 bg-teal-500 text-white rounded-md hover:bg-teal-600 disabled:opacity-50 text-sm flex items-center"
+                    >
+                      {uploadingDoc ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        'Add'
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Existing Documents */}
+              {vendor.kycDocuments && vendor.kycDocuments.length > 0 ? (
+                <div className="space-y-3">
+                  {vendor.kycDocuments.map((doc) => (
+                    <div key={doc.docId} className="bg-white rounded-lg p-4 border border-gray-200">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <FileText className="w-4 h-4 text-gray-500" />
+                            <span className="font-medium text-gray-900">{doc.docName}</span>
+                            {doc.isVerified ? (
+                              <ShieldCheck className="w-4 h-4 text-green-500" />
+                            ) : (
+                              <Shield className="w-4 h-4 text-yellow-500" />
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600">Document No: {doc.docNumber}</p>
+                          <p className="text-xs text-gray-500">
+                            Status: {doc.isVerified ?
+                              <span className="text-green-600 font-medium">verified</span> :
+                              <span className="text-yellow-600 font-medium">Pending Verification</span>
+                            }
+                          </p>
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          {doc.docImage && (
+                            <img
+                              src={doc.docImage}
+                              alt={doc.docName}
+                              className="w-12 h-12 object-cover rounded border"
+                            />
+                          )}
+
+                          <div className="flex items-center space-x-2">
+                            {doc.isVerified ? (
+                              <CheckCircle size={24} className="text-green-500" />
+                            ) : (
+                              <button
+                                onClick={() => handleVerifyDocument(doc.docId)}
+                                className="px-3 py-1 rounded text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200"
+                              >
+                                Verify
+                              </button>
+                            )}
+                          </div>
+
+                          <button
+                            onClick={() => handleDeleteDocument(doc.docId)}
+                            className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-gray-500">
+                  <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No KYC documents uploaded</p>
+                </div>
               )}
             </div>
           </div>
@@ -412,192 +623,6 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
               </p>
             )}
           </div>
-
-          {/* Plan Commissions */}
-          {vendor.planCommission && vendor.planCommission.length > 0 && (
-            <div>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-2 sm:space-y-0">
-                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 border-b border-gray-200 pb-2">
-                  Plan Commissions ({vendor.planCommission.length})
-                </h2>
-              </div>
-
-              {/* Search Bar */}
-              <div className="mb-4 sm:mb-6">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search plans by name, region, or type..."
-                    value={planSearchTerm}
-                    onChange={(e) => setPlanSearchTerm(e.target.value)}
-                    className="pl-10 pr-10 py-2 sm:py-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm sm:text-base"
-                  />
-                  {planSearchTerm && (
-                    <button
-                      onClick={() => setPlanSearchTerm("")}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                    >
-                      <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Plans Grid */}
-              <div className="space-y-3 sm:space-y-4">
-                {paginatedPlans.map((commission) => (
-                  <div
-                    key={commission.localPlanId}
-                    className="bg-gray-50 rounded-lg p-3 sm:p-4"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 space-y-2 sm:space-y-0">
-                      <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
-                        {commission.productPlan.name}
-                      </h3>
-                      <span className="text-lg sm:text-xl font-bold text-teal-600">
-                        ₹{commission.productPlan.price}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-xs sm:text-sm">
-                      <div>
-                        <span className="text-gray-500">Data:</span>
-                        <p className="font-medium">
-                          {commission.productPlan.data}GB
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Validity:</span>
-                        <p className="font-medium">
-                          {commission.productPlan.validity} days
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Portal Commission:</span>
-                        <p className="font-medium text-blue-600">
-                          {commission.portalCommissionRate}%
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Vendor Commission:</span>
-                        <p className="font-medium text-green-600">
-                          {commission.vendorCommissionRate}%
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center mt-3 gap-2">
-                      <span className="px-2 py-1 bg-teal-100 text-teal-800 rounded text-xs">
-                        {commission.productPlan.region}
-                      </span>
-                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                        {commission.productPlan.planType}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Pagination */}
-              {totalPlanPages > 1 && (
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-6 pt-4 border-t border-gray-200 space-y-4 sm:space-y-0">
-                  <div className="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
-                    Showing {((currentPlanPage - 1) * plansPerPage) + 1} to{" "}
-                    {Math.min(currentPlanPage * plansPerPage, filteredPlans.length)} of{" "}
-                    {filteredPlans.length} plans
-                  </div>
-                  
-                  <div className="flex items-center justify-center space-x-1 sm:space-x-2">
-                    <button
-                      onClick={() => setCurrentPlanPage(prev => Math.max(prev - 1, 1))}
-                      disabled={currentPlanPage === 1}
-                      className="px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-xs sm:text-sm"
-                    >
-                      Prev
-                    </button>
-                    
-                    <div className="flex space-x-1">
-                      {(() => {
-                        const maxVisiblePages = window.innerWidth < 640 ? 3 : 5;
-                        const halfVisible = Math.floor(maxVisiblePages / 2);
-                        
-                        let startPage = Math.max(1, currentPlanPage - halfVisible);
-                        let endPage = Math.min(totalPlanPages, startPage + maxVisiblePages - 1);
-                        
-                        if (endPage - startPage + 1 < maxVisiblePages) {
-                          startPage = Math.max(1, endPage - maxVisiblePages + 1);
-                        }
-                        
-                        const pages = [];
-                        
-                        if (startPage > 1) {
-                          pages.push(
-                            <button key={1} onClick={() => setCurrentPlanPage(1)} 
-                              className="px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-xs sm:text-sm">1</button>
-                          );
-                          if (startPage > 2) {
-                            pages.push(<span key="start-ellipsis" className="px-1 sm:px-2 py-1 sm:py-2 text-gray-400 text-xs sm:text-sm">...</span>);
-                          }
-                        }
-                        
-                        for (let i = startPage; i <= endPage; i++) {
-                          pages.push(
-                            <button key={i} onClick={() => setCurrentPlanPage(i)}
-                              className={`px-2 sm:px-3 py-1 sm:py-2 border rounded-lg text-xs sm:text-sm ${
-                                i === currentPlanPage 
-                                  ? 'bg-teal-500 text-white border-teal-500' 
-                                  : 'border-gray-300 hover:bg-gray-50'
-                              }`}>
-                              {i}
-                            </button>
-                          );
-                        }
-                        
-                        if (endPage < totalPlanPages) {
-                          if (endPage < totalPlanPages - 1) {
-                            pages.push(<span key="end-ellipsis" className="px-1 sm:px-2 py-1 sm:py-2 text-gray-400 text-xs sm:text-sm">...</span>);
-                          }
-                          pages.push(
-                            <button key={totalPlanPages} onClick={() => setCurrentPlanPage(totalPlanPages)}
-                              className="px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-xs sm:text-sm">
-                              {totalPlanPages}
-                            </button>
-                          );
-                        }
-                        
-                        return pages;
-                      })()}
-                    </div>
-                    
-                    <button
-                      onClick={() => setCurrentPlanPage(prev => Math.min(prev + 1, totalPlanPages))}
-                      disabled={currentPlanPage === totalPlanPages}
-                      className="px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-xs sm:text-sm"
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* No Results Message */}
-              {filteredPlans.length === 0 && planSearchTerm && (
-                <div className="text-center py-6 sm:py-8">
-                  <Search className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 text-sm sm:text-base">
-                    No plans found matching "{planSearchTerm}"
-                  </p>
-                  <button
-                    onClick={() => setPlanSearchTerm("")}
-                    className="mt-2 text-teal-600 hover:text-teal-700 text-sm sm:text-base"
-                  >
-                    Clear search
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
 

@@ -10,17 +10,14 @@ import {
   AlertCircle,
   X,
   Smartphone,
-  Globe,
-  Zap,
   type LucideIcon,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-// import toast from "react-hot-toast";
 import { useFormik } from "formik";
 import * as Yup from "yup";
-import apiClient from "../../API/apiClient";
-// import { useUser } from "../appContext/UserContext";
-// import { Helmet } from "react-helmet";
+import axios from "axios";
+import baseURL from "../../API/baseUrl";
+import { useUser } from "../../store/slices/userSlice";
 
 interface SuccessOverlayProps {
   message: string;
@@ -34,13 +31,13 @@ interface ToastProps {
 
 export interface InputProps {
   label: string;
-  type?: string; // default: "text"
+  type?: string;
   name: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   error?: any;
   touched?: any;
-  icon?: LucideIcon; // lucide-react icon type
+  icon?: LucideIcon;
   showPassword?: boolean;
   onTogglePassword?: () => void;
   hasToggle?: boolean;
@@ -149,9 +146,7 @@ const CompactFloatingInput: React.FC<InputProps> = ({
         />
 
         <label
-          className={`absolute ${
-            Icon ? "left-10" : "left-3"
-          } transition-all duration-200 pointer-events-none
+          className={`absolute ${Icon ? "left-10" : "left-3"} transition-all duration-200 pointer-events-none
           ${
             focused || hasValue
               ? "-top-2 text-xs bg-white px-1 font-medium" +
@@ -185,7 +180,6 @@ const CompactFloatingInput: React.FC<InputProps> = ({
 };
 
 export default function SignupPage() {
-  // const { setUserInContext } = useUser();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -194,6 +188,11 @@ export default function SignupPage() {
     message: string;
     type: "success" | "error";
   } | null>(null);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [verificationLoading, setVerificationLoading] = useState(false);
+
+  const { setUserInStore } = useUser();
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -204,19 +203,102 @@ export default function SignupPage() {
     setTimeout(() => setApiMessage(null), 5000);
   };
 
+  const handleSendOtp = async (values: any) => {
+    setLoading(true);
+    setApiMessage(null);
+
+    try {
+      // Send OTP to email
+      const otpResponse = await axios.post(`${baseURL}/auth/verification/send-otp`, {
+        value: values.email,
+        contactMethod: "email",
+      });
+
+      if (otpResponse.status === 200) {
+        setOtpSent(true);
+        showApiMessage("Verification code sent to your email", "success");
+        return true;
+      } else {
+        showApiMessage("Failed to send verification code", "error");
+        return false;
+      }
+    } catch (error: any) {
+      console.error("OTP sending error:", error);
+      showApiMessage(
+        error.response?.data?.message || "Failed to send verification code",
+        "error"
+      );
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtpAndSignup = async (values: any) => {
+    setVerificationLoading(true);
+    setApiMessage(null);
+
+    try {
+      // Verify OTP
+      const verifyResponse = await axios.post(`${baseURL}/auth/verification/verify-otp`, {
+        value: values.email,
+        contactMethod: "email",
+        otp: otp,
+      });
+
+      if (verifyResponse.status === 200) {
+        // OTP verified successfully, now create user
+        const response = await axios.post(`${baseURL}/auth/sign-up`, {
+          vendorName: values.vendorName,
+          email: values.email,
+          password: values.password,
+          mobile: values.mobile,
+        });
+
+        if (response.data) {
+          const data = response.data;
+          const profile = data.data.profile;
+          setUserInStore({
+            profile: profile,
+            accessToken: data.data.accessToken,
+            refreshToken: data.data.refreshToken,
+          });
+          showApiMessage("Account created successfully!", "success");
+          const roleName = data?.data?.profile?.role?.roleName;
+          console.log("User role:", roleName);
+
+          if (roleName === "Admin" || roleName === "Super Admin") {
+            navigate("/dashboard");
+          } else if (roleName === "Vendor") {
+            navigate("/dashboard");
+          } else {
+            navigate('/');
+          }
+        }
+      }
+    } catch (error: any) {
+      console.error("Verification error:", error);
+      showApiMessage(
+        error.response?.data?.message || "Verification failed. Please try again.",
+        "error"
+      );
+    } finally {
+      setVerificationLoading(false);
+    }
+  };
+
   const formik = useFormik({
     initialValues: {
-      fullName: "",
+      vendorName: "",
       email: "",
       mobile: "",
       password: "",
       confirmPassword: "",
-      region: "",
     },
     validationSchema: Yup.object({
-      fullName: Yup.string()
-        .min(3, "Full name must be at least 3 characters")
-        .required("Full name is required"),
+      vendorName: Yup.string()
+        .min(3, "Vendor name must be at least 3 characters")
+        .required("Vendor name is required"),
       email: Yup.string()
         .email("Invalid email format")
         .required("Email is required"),
@@ -234,142 +316,52 @@ export default function SignupPage() {
         .required("Please confirm your password")
         .oneOf([Yup.ref("password")], "Passwords must match"),
     }),
-    onSubmit: async (values :any) => {
-      setLoading(true);
-      setApiMessage(null);
-
-      try {
-        const usernameResponse = await apiClient.get(
-          `/auth/check-username/${values.email}`
-        );
-
-        if (usernameResponse.data?.isAvaible === false) {
-          formik.setErrors({ email: "Email already exists" });
-          showApiMessage(
-            "This email is already registered. Please use a different email.",
-            "error"
-          );
-          return;
-        }
-
-        const signupResponse = await apiClient.post("/auth/sign-up", {
-          userName: values.email,
-          fullName: values.fullName,
-          email: values.email,
-          password: values.password,
-          mobile: values.mobile,
-          region: values.region,
-        });
-
-        if (signupResponse.data) {
-          try {
-            await apiClient.post("/auth/verification/send-otp", {
-              value: values.email,
-              contactMethod: "email",
-            });
-
-            showApiMessage(
-              "Account created successfully! Please check your email for verification code.",
-              "success"
-            );
-
-            const userData = {
-              ...signupResponse.data,
-              email: values.email,
-              fullName: values.fullName,
-              mobile: values.mobile,
-              isVerified: false,
-            };
-
-            setTimeout(() => {
-              navigate("/verify-email", {
-                state: { userData, email: values.email, fromSignup: true },
-              });
-            }, 1500);
-          } catch (otpError) {
-            console.error("OTP sending failed:", otpError);
-            showApiMessage(
-              "Account created! However, there was an issue sending the verification email. You can request it again.",
-              "error"
-            );
-
-            setTimeout(() => {
-              navigate("/verify-email", {
-                state: {
-                  userData: signupResponse.data,
-                  email: values.email,
-                  fromSignup: true,
-                  otpFailed: true,
-                },
-              });
-            }, 2000);
-          }
-        }
-      } catch (error: unknown) {
-        console.error("Signup error:", error);
-        if (typeof error === "object" && error && "validationErrors" in error) {
-          const err = error as { validationErrors: Record<string, string[]> };
-          const formErrors: Record<string, string> = {};
-          Object.keys(err.validationErrors).forEach((field) => {
-            formErrors[field] = err.validationErrors[field][0];
-          });
-          formik.setErrors(formErrors);
-          showApiMessage("Please fix the validation errors and try again.", "error");
-        } else if (typeof error === "object" && error && "userMessage" in error) {
-          showApiMessage((error as any).userMessage, "error");
-        } else {
-          showApiMessage("Something went wrong. Please try again.", "error");
-        }
-      } finally {
-        setLoading(false);
+    onSubmit: async (values: any) => {
+      if (!otpSent) {
+        // First step: Send OTP
+        await handleSendOtp(values);
+      } else {
+        // Second step: Verify OTP and sign up
+        await handleVerifyOtpAndSignup(values);
       }
     },
   });
 
   return (
     <>
-      {/* <Helmet>
-        <title>Create Your Motifesim Account</title>
-      </Helmet> */}
       <div className="min-h-screen w-full flex bg-white" style={{ height: "90%" }}>
-        {/* Left Panel */}
+        {/* Left Panel with design and animation */}
         <div className="hidden lg:flex lg:flex-1 bg-gradient-to-br from-teal-600 via-teal-700 to-teal-800 relative overflow-hidden">
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-20 left-20 w-40 h-40 bg-white rounded-full"></div>
-            <div className="absolute bottom-40 right-20 w-60 h-60 bg-white rounded-full"></div>
-            <div className="absolute top-60 right-40 w-20 h-20 bg-white rounded-full"></div>
-          </div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="relative z-10 px-12 text-white">
+              <h1 className="text-4xl font-bold mb-6">Welcome to eSIM World</h1>
+              <p className="text-xl mb-8">Connect globally with instant eSIM activation. No physical SIM cards needed.</p>
+              
+              <div className="space-y-4 mb-8">
+                <div className="flex items-center">
+                  <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center mr-3">
+                    <CheckCircle size={16} className="text-white" />
+                  </div>
+                  <span>Instant activation worldwide</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center mr-3">
+                    <CheckCircle size={16} className="text-white" />
+                  </div>
+                  <span>200+ countries coverage</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center mr-3">
+                    <CheckCircle size={16} className="text-white" />
+                  </div>
+                  <span>No roaming charges</span>
+                </div>
+              </div>
 
-          <div className="relative z-10 flex flex-col justify-center items-center text-white p-12 text-center mb-30 left-20">
-            <div className="mb-8">
-              <div className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mb-6">
-                <Smartphone className="text-white" size={48} />
-              </div>
-              <h1 className="text-4xl font-bold mb-4">Welcome to eSIM World</h1>
-              <p className="text-xl text-teal-100 mb-1leading-relaxed">
-                Connect globally with instant eSIM activation. No physical SIM cards needed.
-              </p>
-            </div>
-
-            <div className="space-y-7 max-w-sm">
-              <div className="flex items-center space-x-3 text-left">
-                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Zap className="text-white" size={16} />
-                </div>
-                <span className="text-teal-100">Instant activation worldwide</span>
-              </div>
-              <div className="flex items-center space-x-3 text-left">
-                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Globe className="text-white" size={16} />
-                </div>
-                <span className="text-teal-100">200+ countries coverage</span>
-              </div>
-              <div className="flex items-center space-x-3 text-left">
-                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
-                  <CheckCircle className="text-white" size={16} />
-                </div>
-                <span className="text-teal-100">No roaming charges</span>
-              </div>
+              {/* Animated circles in background */}
+              <div className="absolute -top-20 -left-20 w-64 h-64 rounded-full bg-teal-500 opacity-20 animate-pulse"></div>
+              <div className="absolute -bottom-20 -right-20 w-80 h-80 rounded-full bg-teal-400 opacity-15 animate-ping"></div>
+              <div className="absolute top-1/2 right-1/4 w-40 h-40 rounded-full bg-white opacity-10 animate-bounce"></div>
             </div>
           </div>
         </div>
@@ -381,88 +373,131 @@ export default function SignupPage() {
               <div className="w-16 h-16 bg-teal-600 rounded-full flex items-center justify-center mx-auto mb-4">
                 <User className="text-white" size={32} />
               </div>
-              <h2 className="text-3xl font-bold text-gray-800 mb-2">Create Account</h2>
-              <p className="text-gray-600">Join thousands of travelers using eSIM</p>
+              <h2 className="text-3xl font-bold text-gray-800 mb-2">
+                {otpSent ? "Verify Email" : "Create Account"}
+              </h2>
+              <p className="text-gray-600">
+                {otpSent
+                  ? "Enter the verification code sent to your email"
+                  : "Join thousands of travelers using eSIM"}
+              </p>
             </div>
 
             <form onSubmit={formik.handleSubmit} className="space-y-4">
-              <CompactFloatingInput
-                label="Full Name"
-                name="fullName"
-                value={formik.values.fullName}
-                onChange={formik.handleChange}
-                error={formik.errors.fullName}
-                touched={formik.touched.fullName}
-                icon={User}
-              />
-              <CompactFloatingInput
-                label="Email Address"
-                type="email"
-                name="email"
-                value={formik.values.email}
-                onChange={formik.handleChange}
-                error={formik.errors.email}
-                touched={formik.touched.email}
-                icon={Mail}
-              />
-              <CompactFloatingInput
-                label="Mobile Number"
-                type="text"
-                name="mobile"
-                value={formik.values.mobile}
-                onChange={formik.handleChange}
-                error={formik.errors.mobile}
-                touched={formik.touched.mobile}
-                icon={Phone}
-              />
+              {!otpSent ? (
+                <>
+                  <CompactFloatingInput
+                    label="Vendor Name"
+                    name="vendorName"
+                    value={formik.values.vendorName}
+                    onChange={formik.handleChange}
+                    error={formik.errors.vendorName}
+                    touched={formik.touched.vendorName}
+                    icon={User}
+                  />
+                  <CompactFloatingInput
+                    label="Email Address"
+                    type="email"
+                    name="email"
+                    value={formik.values.email}
+                    onChange={formik.handleChange}
+                    error={formik.errors.email}
+                    touched={formik.touched.email}
+                    icon={Mail}
+                  />
+                  <CompactFloatingInput
+                    label="Mobile Number"
+                    type="text"
+                    name="mobile"
+                    value={formik.values.mobile}
+                    onChange={formik.handleChange}
+                    error={formik.errors.mobile}
+                    touched={formik.touched.mobile}
+                    icon={Phone}
+                  />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <CompactFloatingInput
-                  label="Password"
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={formik.values.password}
-                  onChange={formik.handleChange}
-                  error={formik.errors.password}
-                  touched={formik.touched.password}
-                  icon={Lock}
-                  showPassword={showPassword}
-                  onTogglePassword={() => setShowPassword(!showPassword)}
-                  hasToggle
-                />
-                <CompactFloatingInput
-                  label="Confirm Password"
-                  type={showConfirmPassword ? "text" : "password"}
-                  name="confirmPassword"
-                  value={formik.values.confirmPassword}
-                  onChange={formik.handleChange}
-                  error={formik.errors.confirmPassword}
-                  touched={formik.touched.confirmPassword}
-                  icon={Lock}
-                  showPassword={showConfirmPassword}
-                  onTogglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
-                  hasToggle
-                />
-              </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <CompactFloatingInput
+                      label="Password"
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      value={formik.values.password}
+                      onChange={formik.handleChange}
+                      error={formik.errors.password}
+                      touched={formik.touched.password}
+                      icon={Lock}
+                      showPassword={showPassword}
+                      onTogglePassword={() => setShowPassword(!showPassword)}
+                      hasToggle
+                    />
+                    <CompactFloatingInput
+                      label="Confirm Password"
+                      type={showConfirmPassword ? "text" : "password"}
+                      name="confirmPassword"
+                      value={formik.values.confirmPassword}
+                      onChange={formik.handleChange}
+                      error={formik.errors.confirmPassword}
+                      touched={formik.touched.confirmPassword}
+                      icon={Lock}
+                      showPassword={showConfirmPassword}
+                      onTogglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
+                      hasToggle
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <CompactFloatingInput
+                    label="Verification Code"
+                    type="text"
+                    name="otp"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    icon={CheckCircle}
+                  />
+                  <p className="text-sm text-gray-600 text-center">
+                    Didn't receive the code?{" "}
+                    <button
+                      type="button"
+                      className="text-teal-600 hover:text-teal-700 font-medium"
+                      onClick={() => handleSendOtp(formik.values)}
+                    >
+                      Resend
+                    </button>
+                  </p>
+                </div>
+              )}
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || verificationLoading}
                 className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center space-x-2 mt-6 shadow-lg hover:shadow-xl"
               >
-                {loading ? (
+                {loading || verificationLoading ? (
                   <div className="flex items-center space-x-2">
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Creating Account...</span>
+                    <span>
+                      {otpSent ? "Verifying..." : "Sending Code..."}
+                    </span>
                   </div>
                 ) : (
                   <>
-                    <span>Create Account</span>
+                    <span>{otpSent ? "Verify & Create Account" : "Send Verification Code"}</span>
                     <Smartphone size={18} />
                   </>
                 )}
               </button>
             </form>
+
+            {otpSent && (
+              <button
+                type="button"
+                onClick={() => setOtpSent(false)}
+                className="w-full text-teal-600 hover:text-teal-700 py-2 rounded-lg font-medium transition-all duration-200"
+              >
+                ← Back to edit information
+              </button>
+            )}
 
             <div className="text-center pt-4 border-t border-gray-200">
               <p className="text-gray-600">

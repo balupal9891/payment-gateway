@@ -92,7 +92,7 @@ const VendorCredentialsPage: React.FC = () => {
   useEffect(() => {
     const fetchGateways = async () => {
       try {
-        const res = await axios.get(`${baseURL}/vendor/get-vendor-unmapped-gateways`,{
+        const res = await axios.get(`${baseURL}/vendorInfo/get-vendor-unmapped-gateways`,{
           headers: {
             'Authorization': `Bearer ${getAccessToken()}`
           }
@@ -118,7 +118,7 @@ const VendorCredentialsPage: React.FC = () => {
   const fetchExistingCredentials = async (gatewayId: string) => {
     try {
       const response = await axios.get(
-        `${baseURL}/vendor/get-vendor-credentials/${gatewayId}`,
+        `${baseURL}/vendorInfo/get-vendor-credentials/${gatewayId}`,
         {
           headers: {
             'Authorization': `Bearer ${getAccessToken()}`,
@@ -190,7 +190,7 @@ const VendorCredentialsPage: React.FC = () => {
         if (isEditMode && existingCredentialId) {
           // Update existing credentials
           response = await axios.post(
-            `${baseURL}/vendor/update-vendor-credentials/${urlGatewayId}`,
+            `${baseURL}/vendorInfo/update-vendor-credentials/${urlGatewayId}`,
             vendorData,
             {
               headers: {
@@ -202,7 +202,7 @@ const VendorCredentialsPage: React.FC = () => {
         } else {
           // Create new credentials
           response = await axios.post(
-            `${baseURL}/vendor/add-vendor-credentials/${formData.gatewayId}`,
+            `${baseURL}/vendorInfo/add-vendor-credentials/${formData.gatewayId}`,
             vendorData,
             {
               headers: {

@@ -23,7 +23,7 @@ interface ToastProps {
 // }
 
 interface FormValues {
-  username: string;
+  email: string;
   password: string;
 }
 
@@ -100,7 +100,7 @@ export default function LoginPage() {
   const { showToast, ToastComponent } = useToast();
   const [searchParams] = useSearchParams();
   const [formValues, setFormValues] = useState<FormValues>({
-    username: "",
+    email: "",
     password: "",
   });
 
@@ -116,7 +116,7 @@ export default function LoginPage() {
 
     try {
       const response = await apiClient.post("/auth/sign-in", {
-        userName: formValues.username,
+        email: formValues.email,
         password: formValues.password,
       });
 
@@ -177,20 +177,20 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-gray-700">
-                  Username or Email
+                  Phone or Email
                 </label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <User className="h-5 w-5 text-gray-400 group-focus-within:text-teal-600 transition-colors" />
                   </div>
                   <input
-                    name="username"
+                    name="email"
                     type="text"
                     className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 transition-all duration-200 bg-gray-50 focus:bg-white"
                     required
-                    value={formValues.username}
+                    value={formValues.email}
                     onChange={handleChange}
-                    placeholder="Enter your username or email"
+                    placeholder="Enter your email or email"
                   />
                 </div>
               </div>

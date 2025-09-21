@@ -22,7 +22,6 @@ const Sidebar: React.FC<SidebarProps> = ({ className = "" }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user } = useUser();
-  console.log(user)
 
   // Role-based nav items
   const role = user?.role?.roleName || "Vendor";
@@ -58,7 +57,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className = "" }) => {
   };
 
   const NavLinks = ({ collapsed, closeMobile }: { collapsed: boolean; closeMobile?: () => void }) => (
-    <nav className="flex flex-col space-y-2">
+    <nav className="flex flex-col space-y-1">
       {navItems.map((item) => {
         const Icon = item.icon;
         const active = isActive(item.path);
@@ -67,18 +66,21 @@ const Sidebar: React.FC<SidebarProps> = ({ className = "" }) => {
             key={item.path}
             to={item.path}
             onClick={closeMobile}
-            className={`flex items-center px-3 py-2 rounded-lg transition-colors relative group
+            className={`flex items-center px-3 py-3 rounded-lg transition-colors duration-200 relative group
               ${collapsed ? "justify-center" : "justify-start space-x-3"}
-              ${active ? "bg-teal-600 text-white" : "text-teal-200 hover:bg-teal-600 hover:text-white"}`}
+              ${active 
+                ? "bg-teal-500 text-white shadow-lg" 
+                : "text-teal-100 hover:bg-teal-500 hover:text-white hover:shadow-md"}`}
             title={collapsed ? item.label : ""}
           >
-            <Icon className="w-5 h-5" />
-            {!collapsed && <span>{item.label}</span>}
+            <Icon className={`${collapsed ? 'w-6 h-6' : 'w-5 h-5'} flex-shrink-0`} />
+            {!collapsed && <span className="font-medium">{item.label}</span>}
 
             {/* Tooltip when collapsed */}
             {collapsed && (
-              <div className="absolute left-full ml-3 px-3 py-1 bg-gray-800 text-white text-sm rounded opacity-0 pointer-events-none group-hover:opacity-100 transition-all whitespace-nowrap">
+              <div className="absolute left-full ml-3 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-all duration-200 whitespace-nowrap z-50 shadow-lg">
                 {item.label}
+                <div className="absolute top-1/2 left-0 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-gray-900 rotate-45"></div>
               </div>
             )}
           </Link>
@@ -92,62 +94,117 @@ const Sidebar: React.FC<SidebarProps> = ({ className = "" }) => {
       {/* Mobile toggle button */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="lg:hidden fixed top-4 left-3 z-50 p-2 bg-white rounded-lg shadow-md border border-gray-200"
+        className="lg:hidden fixed top-4 left-4 z-50 p-3 bg-white rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition-shadow duration-200"
       >
-        <Bars3Icon className="w-6 h-6 text-gray-600" />
+        <Bars3Icon className="w-6 h-6 text-gray-700" />
       </button>
 
       {/* Desktop Sidebar */}
       <div
-        className={`hidden lg:flex h-screen bg-teal-700 text-white flex-col transition-all duration-300 relative ${
-          isCollapsed ? "w-16" : "w-64"
+        className={`hidden lg:flex h-screen bg-gradient-to-b from-teal-700 to-teal-800 text-white flex-col transition-all duration-300 relative flex-shrink-0 ${
+          isCollapsed ? "w-20" : "w-64"
         } ${className}`}
       >
         {/* Collapse Button */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="absolute top-6 -right-3 bg-white border border-gray-200 rounded-full p-1 shadow hover:bg-gray-50"
+          className="absolute top-6 -right-3 bg-white border border-gray-200 rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-200 z-10 hover:scale-105"
         >
           {isCollapsed ? (
-            <ChevronRightIcon className="w-5 h-5 text-gray-600" />
+            <ChevronRightIcon className="w-4 h-4 text-gray-600" />
           ) : (
-            <ChevronLeftIcon className="w-5 h-5 text-gray-600" />
+            <ChevronLeftIcon className="w-4 h-4 text-gray-600" />
           )}
         </button>
 
         {/* Logo / Branding */}
-        <div className="p-6 flex items-center space-x-3">
-          <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-            <span className="text-teal-700 font-bold text-lg">M</span>
+        <div className={`p-6 flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'} border-b border-teal-600`}>
+          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-md">
+            <span className="text-teal-500 font-bold text-lg">M</span>
           </div>
-          {!isCollapsed && <span className="text-xl font-bold">motifpe</span>}
+          {!isCollapsed && (
+            <div>
+              <span className="text-xl font-bold">motifpe</span>
+              <p className="text-teal-200 text-xs mt-1">Payment Dashboard</p>
+            </div>
+          )}
         </div>
 
         {/* Navigation */}
-        <div className="px-3 py-4 flex-1 overflow-y-auto">
+        <div className="px-4 py-6 flex-1 overflow-y-auto">
           <NavLinks collapsed={isCollapsed} />
         </div>
+
+        {/* User Profile Section (if not collapsed) */}
+        {!isCollapsed && user && (
+          <div className="p-4 border-t border-teal-600">
+            <div className="flex items-center space-x-3 p-3 rounded-lg bg-teal-600/50">
+              <div className="w-8 h-8 bg-teal-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm font-medium">
+                  {user.fullName?.charAt(0).toUpperCase() || 'U'}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate">
+                  {user.fullName || 'User'}
+                </p>
+                <p className="text-xs text-teal-200 truncate">
+                  {user.role?.roleName || 'Vendor'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Mobile Sidebar */}
+      {/* Mobile Sidebar Overlay */}
       <div
         className={`lg:hidden fixed inset-0 z-40 transition-opacity duration-300 ${
           isMobileMenuOpen ? "opacity-100 visible" : "opacity-0 invisible"
         }`}
       >
-        <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setIsMobileMenuOpen(false)} />
+        <div 
+          className="absolute inset-0 bg-black bg-opacity-60 backdrop-blur-sm" 
+          onClick={() => setIsMobileMenuOpen(false)} 
+        />
         <div
-          className={`absolute left-0 top-0 h-full w-64 bg-teal-700 text-white p-4 transition-transform duration-300 ${
+          className={`absolute left-0 top-0 h-full w-80 bg-gradient-to-b from-teal-700 to-teal-800 text-white transition-transform duration-300 shadow-2xl ${
             isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          <div className="flex items-center space-x-3 mb-6 mt-8">
-            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-              <span className="text-teal-700 font-bold text-lg">M</span>
+          <div className="p-6">
+            <div className="flex items-center space-x-3 mb-8 mt-8">
+              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-md">
+                <span className="text-teal-500 font-bold text-xl">M</span>
+              </div>
+              <div>
+                <span className="text-xl font-bold">motifpe</span>
+                <p className="text-teal-200 text-sm mt-1">Payment Dashboard</p>
+              </div>
             </div>
-            <span className="text-xl font-bold">motifpe</span>
+            <NavLinks collapsed={false} closeMobile={() => setIsMobileMenuOpen(false)} />
+            
+            {/* Mobile User Profile */}
+            {user && (
+              <div className="mt-8 p-4 bg-teal-600/50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-teal-500 rounded-full flex items-center justify-center">
+                    <span className="text-white font-medium">
+                      {user.fullName?.charAt(0).toUpperCase() || 'U'}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-medium text-white">
+                      {user.fullName || 'User'}
+                    </p>
+                    <p className="text-sm text-teal-200">
+                      {user.role?.roleName || 'Vendor'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-          <NavLinks collapsed={false} closeMobile={() => setIsMobileMenuOpen(false)} />
         </div>
       </div>
     </>

@@ -27,6 +27,9 @@ import {
 import { motion } from 'framer-motion';
 import { useMediaQuery } from 'react-responsive';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import baseURL from '../API/baseUrl';
+import { useUser } from '../store/slices/userSlice';
 
 // Register ChartJS components
 ChartJS.register(
@@ -43,32 +46,70 @@ ChartJS.register(
 
 // Types
 type Transaction = {
-  id: string;
-  status: 'success' | 'failed' | 'dropped' | 'pending';
+  paymentId: string;
+  paymentStatus: 'success' | 'failed' | 'dropped' | 'pending' | 'refund';
   amount: number;
-  date: string;
-  time: string;
-  paymentMethod: 'card' | 'netbanking' | 'upi' | 'wallet' | 'cod';
-  currency: 'INR' | 'USD';
+  paymentSource: string;
+  createdAt: string;
 };
 
-type DashboardData = {
+type GatewayUsage = {
+  gateway: string;
+  count: number;
+  gatewayTotalAmount: number;
+};
+
+type DashboardPeriodData = {
+  periodStart: string;
+  periodEnd: string;
   totalTransactions: number;
   successfulTransactions: number;
-  totalGTV: number;
+  gtv: number;
   totalRefunds: number;
-  conversionRate: number;
-  activeGateway: string;
-  transactionVolume: {
-    date: string;
-    card: number;
-    netbanking: number;
-    upi: number;
-    wallet: number;
-    cod: number;
-  }[];
-  recentTransactions: Transaction[];
+  gatewayUsage: GatewayUsage[] | null;
 };
+
+type Comparisons = {
+  totalTransactionsGrowth: number;
+  successfulTransactionsGrowth: number;
+  gtvGrowth: number;
+  totalRefundsGrowth: number;
+};
+
+type DashboardAPIResponse = {
+  status: string;
+  message: string;
+  data: {
+    summary: DashboardPeriodData[];
+    recentTransactions: Transaction[];
+    comparisons: Comparisons;
+  };
+};
+
+// Date range options
+const DATE_RANGES = {
+  'Today': { days: 1, label: 'Today' },
+  'Last 7 days': { days: 7, label: 'Last 7 days' },
+  '15 days': { days: 15, label: '15 days' },
+  '30 days': { days: 30, label: '30 days' },
+  '3 months': { days: 90, label: '3 months' },
+  '6 months': { days: 180, label: '6 months' },
+  '1 year': { days: 365, label: '1 year' }
+};
+
+// Gateway colors for consistent visualization
+const GATEWAY_COLORS = [
+  '#1e40af', // blue
+  '#16a34a', // green
+  '#9333ea', // purple
+  '#0d9488', // teal
+  '#c026d3', // magenta
+  '#ea580c', // orange
+  '#dc2626', // red
+  '#059669', // emerald
+  '#7c3aed', // violet
+  '#0891b2'  // cyan
+];
 
 // KYC Verification Component
 const KYCVerification = () => {
@@ -76,7 +117,6 @@ const KYCVerification = () => {
   const isMobile = useMediaQuery({ maxWidth: 768 });
 
   const handleCompleteKYC = () => {
-    // Redirect to onboarding page
     navigate('/onboarding');
   };
 
@@ -109,79 +149,13 @@ const KYCVerification = () => {
           whileTap={{ scale: 0.98 }}
         >
           <span>Complete KYC</span>
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
           </svg>
         </motion.button>
       </div>
     </motion.div>
   );
-};
-
-// Mock data with more realistic values
-const dashboardData: DashboardData = {
-  totalTransactions: 1242,
-  successfulTransactions: 1028,
-  totalGTV: 584200,
-  totalRefunds: 32450,
-  conversionRate: 86.668188,
-  activeGateway: "Razorpay",
-  transactionVolume: [
-    { date: "2023-07-01", card: 12000, netbanking: 8000, upi: 25000, wallet: 5000, cod: 3000 },
-    { date: "2023-07-02", card: 15000, netbanking: 9000, upi: 28000, wallet: 6000, cod: 3500 },
-    { date: "2023-07-03", card: 18000, netbanking: 12000, upi: 32000, wallet: 7000, cod: 4000 },
-    { date: "2023-07-04", card: 14000, netbanking: 10000, upi: 27000, wallet: 5500, cod: 3200 },
-    { date: "2023-07-05", card: 16000, netbanking: 11000, upi: 30000, wallet: 6500, cod: 3800 },
-    { date: "2023-07-06", card: 20000, netbanking: 15000, upi: 35000, wallet: 8000, cod: 4500 },
-    { date: "2023-07-07", card: 22000, netbanking: 18000, upi: 40000, wallet: 9000, cod: 5000 },
-  ],
-  recentTransactions: [
-    {
-      id: "791373446846577644",
-      status: "success",
-      amount: 1000,
-      date: "31/07/2023",
-      time: "02:43:40",
-      paymentMethod: "card",
-      currency: "INR"
-    },
-    {
-      id: "791373446846577645",
-      status: "failed",
-      amount: 2500,
-      date: "31/07/2023",
-      time: "03:15:22",
-      paymentMethod: "upi",
-      currency: "INR"
-    },
-    {
-      id: "791373446846577646",
-      status: "pending",
-      amount: 1800,
-      date: "30/07/2023",
-      time: "14:32:10",
-      paymentMethod: "netbanking",
-      currency: "INR"
-    },
-    {
-      id: "791373446846577647",
-      status: "success",
-      amount: 3500,
-      date: "30/07/2023",
-      time: "11:45:33",
-      paymentMethod: "wallet",
-      currency: "INR"
-    },
-    {
-      id: "791373446846577648",
-      status: "dropped",
-      amount: 4200,
-      date: "29/07/2023",
-      time: "09:12:55",
-      paymentMethod: "cod",
-      currency: "INR"
-    },
-  ]
 };
 
 // Helper functions
@@ -194,6 +168,28 @@ const formatCurrency = (amount: number, currency: 'INR' | 'USD' = 'INR'): string
   }).format(amount);
 };
 
+const getDateRange = (days: number) => {
+  const endDate = new Date();
+  const startDate = new Date();
+  
+  // Set end date to end of today (exclusive)
+  endDate.setDate(endDate.getDate() + 1);
+  
+  if (days === 0) {
+    // Today - start is beginning of today
+    startDate.setHours(0, 0, 0, 0);
+  } else {
+    // For other ranges, set start date to days ago at beginning of day
+    startDate.setDate(endDate.getDate() - days);
+    startDate.setHours(0, 0, 0, 0);
+  }
+  
+  return {
+    startDate: startDate.toISOString().split('T')[0],
+    endDate: endDate.toISOString().split('T')[0]
+  };
+};
+
 const getStatusBadge = (status: string) => {
   const statusMap: Record<string, { color: string; bg: string; icon: React.ReactNode }> = {
     success: {
@@ -204,17 +200,22 @@ const getStatusBadge = (status: string) => {
     failed: {
       color: 'text-red-800',
       bg: 'bg-red-100',
-      icon: <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+      icon: <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
     },
     dropped: {
       color: 'text-red-800',
       bg: 'bg-red-100',
-      icon: <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+      icon: <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
     },
     pending: {
       color: 'text-yellow-800',
       bg: 'bg-yellow-100',
-      icon: <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+      icon: <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+    },
+    refund: {
+      color: 'text-orange-800',
+      bg: 'bg-orange-100',
+      icon: <ArrowPathIcon className="w-3 h-3" />
     }
   };
 
@@ -228,109 +229,210 @@ const getStatusBadge = (status: string) => {
   );
 };
 
-const getPaymentMethodIcon = (method: string) => {
-  const icons: Record<string, { icon: React.ReactNode; color: string }> = {
-    card: { icon: <CreditCardIcon className="w-5 h-5" />, color: 'text-blue-600' },
-    netbanking: { icon: <BanknotesIcon className="w-5 h-5" />, color: 'text-green-600' },
-    upi: { icon: <QrCodeIcon className="w-5 h-5" />, color: 'text-purple-600' },
-    wallet: { icon: <WalletIcon className="w-5 h-5" />, color: 'text-teal-600' },
-    cod: { icon: <TruckIcon className="w-5 h-5" />, color: 'text-orange-600' }
-  };
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+};
 
-  return icons[method] || { icon: <CurrencyDollarIcon className="w-5 h-5" />, color: 'text-gray-600' };
+const formatTime = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
 };
 
 const DashboardHome: React.FC = () => {
-  const [activeFilter, setActiveFilter] = useState('30 days');
+  const [activeFilter, setActiveFilter] = useState('Last 7 days');
   const [loading, setLoading] = useState(true);
-  const [kycCompleted, setKycCompleted] = useState(false); // State to track KYC status
+  const [kycCompleted, setKycCompleted] = useState(false);
+  const [dashboardData, setDashboardData] = useState<DashboardPeriodData[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const [comparisons, setComparisons] = useState<Comparisons | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const isMobile = useMediaQuery({ maxWidth: 768 });
 
-  useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
+  // Get vendorId from Redux (replace with your actual selector)
+  const { user } = useUser();
+  const vendorId = user?.vendorId;
+
+  // Fetch dashboard data
+  const fetchDashboardData = async (filter: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const dateRange = getDateRange(DATE_RANGES[filter as keyof typeof DATE_RANGES]?.days || 1);
+
+      const requestBody = {
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate,
+        vendorId: vendorId
+      };
+
+      const response = await axios.post<DashboardAPIResponse>(
+        `${baseURL}/dashboard/dashboard-summary`,
+        requestBody,
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.data.status === 'success') {
+        setDashboardData(response.data.data.summary);
+        setRecentTransactions(response.data.data.recentTransactions);
+        setComparisons(response.data.data.comparisons);
+      } else {
+        throw new Error(response.data.message || 'Failed to fetch data');
+      }
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.message || err.message);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred');
+      }
+      console.error('Dashboard API Error:', err);
+    } finally {
       setLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Prepare data for charts
-  const transactionVolumeData = {
-    labels: dashboardData.transactionVolume.map(item =>
-      new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    ),
-    datasets: [
-      {
-        label: 'Card',
-        data: dashboardData.transactionVolume.map(item => item.card),
-        backgroundColor: '#1e40af',
-        borderRadius: 4
-      },
-      {
-        label: 'Net Banking',
-        data: dashboardData.transactionVolume.map(item => item.netbanking),
-        backgroundColor: '#16a34a',
-        borderRadius: 4
-      },
-      {
-        label: 'UPI',
-        data: dashboardData.transactionVolume.map(item => item.upi),
-        backgroundColor: '#9333ea',
-        borderRadius: 4
-      },
-      {
-        label: 'Wallet',
-        data: dashboardData.transactionVolume.map(item => item.wallet),
-        backgroundColor: '#0d9488',
-        borderRadius: 4
-      },
-      {
-        label: 'COD',
-        data: dashboardData.transactionVolume.map(item => item.cod),
-        backgroundColor: '#c026d3',
-        borderRadius: 4
-      }
-    ]
+    }
   };
 
-  const paymentMethodDistribution = {
-    labels: ['Card', 'Net Banking', 'UPI', 'Wallet', 'COD'],
-    datasets: [
-      {
-        data: [
-          dashboardData.transactionVolume.reduce((sum, item) => sum + item.card, 0),
-          dashboardData.transactionVolume.reduce((sum, item) => sum + item.netbanking, 0),
-          dashboardData.transactionVolume.reduce((sum, item) => sum + item.upi, 0),
-          dashboardData.transactionVolume.reduce((sum, item) => sum + item.wallet, 0),
-          dashboardData.transactionVolume.reduce((sum, item) => sum + item.cod, 0)
-        ],
-        backgroundColor: [
-          '#1e40af',
-          '#16a34a',
-          '#9333ea',
-          '#0d9488',
-          '#c026d3'
-        ],
-        borderWidth: 1
-      }
-    ]
-  };
+  useEffect(() => {
+    fetchDashboardData(activeFilter);
+  }, [activeFilter, vendorId]);
 
-  const successRate = (dashboardData.successfulTransactions / dashboardData.totalTransactions) * 100;
+  // Calculate aggregated data
+  const aggregatedData = React.useMemo(() => {
+    const totals = dashboardData.reduce((acc, period) => ({
+      totalTransactions: acc.totalTransactions + period.totalTransactions,
+      successfulTransactions: acc.successfulTransactions + period.successfulTransactions,
+      totalGTV: acc.totalGTV + period.gtv,
+      totalRefunds: acc.totalRefunds + period.totalRefunds
+    }), {
+      totalTransactions: 0,
+      successfulTransactions: 0,
+      totalGTV: 0,
+      totalRefunds: 0
+    });
+
+    // Aggregate gateway usage
+    const gatewayMap = new Map<string, number>();
+    dashboardData.forEach(period => {
+      if (period.gatewayUsage) {
+        period.gatewayUsage.forEach(gateway => {
+          const existing = gatewayMap.get(gateway.gateway) || 0;
+          gatewayMap.set(gateway.gateway, existing + gateway.gatewayTotalAmount);
+        });
+      }
+    });
+
+    return {
+      ...totals,
+      gatewayUsage: Array.from(gatewayMap.entries()).map(([gateway, amount]) => ({
+        gateway,
+        amount
+      }))
+    };
+  }, [dashboardData]);
+
+  // Prepare chart data for gateways
+  const transactionVolumeData = React.useMemo(() => {
+    const uniqueGateways = Array.from(new Set(
+      dashboardData.flatMap(period => 
+        period.gatewayUsage?.map(g => g.gateway) || []
+      )
+    ));
+
+    const datasets = uniqueGateways.map((gateway, index) => ({
+      label: gateway.charAt(0).toUpperCase() + gateway.slice(1),
+      data: dashboardData.map(period => {
+        const gatewayData = period.gatewayUsage?.find(g => g.gateway === gateway);
+        return gatewayData ? gatewayData.gatewayTotalAmount : 0;
+      }),
+      backgroundColor: GATEWAY_COLORS[index % GATEWAY_COLORS.length],
+      borderRadius: 4
+    }));
+
+    return {
+      labels: dashboardData.map(period =>
+        new Date(period.periodStart).toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric' 
+        })
+      ),
+      datasets
+    };
+  }, [dashboardData]);
+
+  // Gateway distribution for the line chart
+  const gatewayDistribution = React.useMemo(() => {
+    const uniqueGateways = aggregatedData.gatewayUsage.map(g => g.gateway);
+    const amounts = aggregatedData.gatewayUsage.map(g => g.amount);
+
+    return {
+      labels: uniqueGateways.map(g => g.charAt(0).toUpperCase() + g.slice(1)),
+      datasets: [{
+        data: amounts,
+        backgroundColor: uniqueGateways.map((_, index) => 
+          GATEWAY_COLORS[index % GATEWAY_COLORS.length]
+        ),
+        borderColor: uniqueGateways.map((_, index) => 
+          GATEWAY_COLORS[index % GATEWAY_COLORS.length]
+        ),
+        borderWidth: 2
+      }]
+    };
+  }, [aggregatedData]);
+
+  const successRate = aggregatedData.totalTransactions > 0 
+    ? (aggregatedData.successfulTransactions / aggregatedData.totalTransactions) * 100 
+    : 0;
+
+  // Get most active gateway
+  const mostActiveGateway = aggregatedData.gatewayUsage.length > 0 
+    ? aggregatedData.gatewayUsage.reduce((prev, current) => 
+        prev.amount > current.amount ? prev : current
+      ).gateway 
+    : 'N/A';
 
   if (loading) {
     return (
-        <div className="flex items-center justify-center h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">Error loading dashboard data</p>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={() => fetchDashboardData(activeFilter)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          >
+            Retry
+          </button>
         </div>
+      </div>
     );
   }
 
   return (
     <>
-      
-      {/* KYC Verification Banner - Only show if KYC is not completed */}
+      {/* KYC Verification Banner */}
       {!kycCompleted && <KYCVerification />}
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-6 pb-4 px-4 sm:px-6">
@@ -344,45 +446,45 @@ const DashboardHome: React.FC = () => {
           >
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Track your Business</h1>
             <p className="text-gray-600 mb-6">
-              (Showing data of past 30 days) - Conversion: 1 USD = {dashboardData.conversionRate} INR
+              (Showing data of {activeFilter}) - Conversion: 1 USD = 86.67 INR
             </p>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               <StatCard
                 icon={<DocumentDuplicateIcon className="w-6 h-6 text-blue-600" />}
-                value={dashboardData.totalTransactions.toString()}
+                value={aggregatedData.totalTransactions.toString()}
                 label="Total Transactions"
                 iconBg="bg-blue-100"
-                trend="up"
-                trendValue="12%"
+                trend={comparisons?.totalTransactionsGrowth !== undefined ? (comparisons.totalTransactionsGrowth >= 0 ? 'up' : 'down') : 'up'}
+                trendValue={comparisons?.totalTransactionsGrowth !== undefined ? `${Math.abs(comparisons.totalTransactionsGrowth)}%` : '0%'}
               />
 
               <StatCard
                 icon={<CheckCircleIcon className="w-6 h-6 text-green-600" />}
-                value={dashboardData.successfulTransactions.toString()}
+                value={aggregatedData.successfulTransactions.toString()}
                 label="Successful Transactions"
                 iconBg="bg-green-100"
-                trend={successRate > 80 ? 'up' : 'down'}
-                trendValue={`${successRate.toFixed(1)}%`}
+                trend={comparisons?.successfulTransactionsGrowth !== undefined ? (comparisons.successfulTransactionsGrowth >= 0 ? 'up' : 'down') : 'up'}
+                trendValue={comparisons?.successfulTransactionsGrowth !== undefined ? `${Math.abs(comparisons.successfulTransactionsGrowth)}%` : '0%'}
               />
 
               <StatCard
                 icon={<CurrencyDollarIcon className="w-6 h-6 text-purple-600" />}
-                value={formatCurrency(dashboardData.totalGTV)}
+                value={formatCurrency(aggregatedData.totalGTV)}
                 label="Total GTV"
                 iconBg="bg-purple-100"
-                trend="up"
-                trendValue="18%"
+                trend={comparisons?.gtvGrowth !== undefined ? (comparisons.gtvGrowth >= 0 ? 'up' : 'down') : 'up'}
+                trendValue={comparisons?.gtvGrowth !== undefined ? `${Math.abs(comparisons.gtvGrowth)}%` : '0%'}
               />
 
               <StatCard
                 icon={<ArrowPathIcon className="w-6 h-6 text-orange-600" />}
-                value={formatCurrency(dashboardData.totalRefunds)}
+                value={formatCurrency(aggregatedData.totalRefunds)}
                 label="Total Refunds"
                 iconBg="bg-orange-100"
-                trend="down"
-                trendValue="5%"
+                trend={comparisons?.totalRefundsGrowth !== undefined ? (comparisons.totalRefundsGrowth >= 0 ? 'up' : 'down') : 'down'}
+                trendValue={comparisons?.totalRefundsGrowth !== undefined ? `${Math.abs(comparisons.totalRefundsGrowth)}%` : '0%'}
               />
             </div>
 
@@ -397,7 +499,9 @@ const DashboardHome: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 mb-2 text-sm">Current active gateway</p>
-                  <p className="text-xl font-bold text-gray-900">{dashboardData.activeGateway}</p>
+                  <p className="text-xl font-bold text-gray-900 capitalize">
+                    {mostActiveGateway}
+                  </p>
                 </div>
                 <motion.button
                   className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
@@ -418,35 +522,43 @@ const DashboardHome: React.FC = () => {
             >
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Total Transaction Volume</h2>
               <div className="h-64">
-                <Bar
-                  data={transactionVolumeData}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: {
-                        position: 'top',
+                {transactionVolumeData.datasets.length > 0 && transactionVolumeData.datasets.some(dataset => 
+                  dataset.data.some(value => value > 0)
+                ) ? (
+                  <Bar
+                    data={transactionVolumeData}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        legend: {
+                          position: 'top',
+                        },
+                        tooltip: {
+                          callbacks: {
+                            label: function (context) {
+                              return `${context.dataset.label}: ${formatCurrency(context.raw as number)}`;
+                            }
+                          }
+                        }
                       },
-                      tooltip: {
-                        callbacks: {
-                          label: function (context) {
-                            return `${context.dataset.label}: ${formatCurrency(context.raw as number)}`;
+                      scales: {
+                        y: {
+                          beginAtZero: true,
+                          ticks: {
+                            callback: function (value) {
+                              return formatCurrency(Number(value));
+                            }
                           }
                         }
                       }
-                    },
-                    scales: {
-                      y: {
-                        beginAtZero: true,
-                        ticks: {
-                          callback: function (value) {
-                            return formatCurrency(Number(value));
-                          }
-                        }
-                      }
-                    }
-                  }}
-                />
+                    }}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full">
+                    <p className="text-gray-500">No transaction data available</p>
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>
@@ -467,14 +579,15 @@ const DashboardHome: React.FC = () => {
 
             {/* Date Filters */}
             <div className="flex flex-wrap gap-2 mb-4">
-              {['Today', 'Last 7 days', '15 days', '30 days'].map((filter) => (
+              {Object.keys(DATE_RANGES).map((filter) => (
                 <motion.button
                   key={filter}
-                  className={`px-3 py-1 text-sm rounded-lg transition-colors ${activeFilter === filter.toLowerCase()
+                  className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                    activeFilter === filter
                       ? 'bg-blue-600 text-white'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                    }`}
-                  onClick={() => setActiveFilter(filter.toLowerCase())}
+                  }`}
+                  onClick={() => setActiveFilter(filter)}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
@@ -483,48 +596,55 @@ const DashboardHome: React.FC = () => {
               ))}
             </div>
 
-            {/* Payment Method Distribution */}
+            {/* Gateway Distribution */}
             <div className="h-48 mb-4">
               <div className="grid grid-cols-2 gap-4 h-full">
                 <div className="h-full">
-                  <Line
-                    data={{
-                      labels: paymentMethodDistribution.labels,
-                      datasets: [{
-                        ...paymentMethodDistribution.datasets[0],
-                        type: 'line' as const,
-                        borderColor: paymentMethodDistribution.datasets[0].backgroundColor,
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        fill: true,
-                        tension: 0.4
-                      }]
-                    }}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      plugins: {
-                        legend: {
-                          display: false
-                        }
-                      },
-                      scales: {
-                        y: {
-                          display: false
+                  {gatewayDistribution.datasets[0].data.length > 0 && 
+                  gatewayDistribution.datasets[0].data.some(value => value > 0) ? (
+                    <Line
+                      data={{
+                        labels: gatewayDistribution.labels,
+                        datasets: [{
+                          ...gatewayDistribution.datasets[0],
+                          type: 'line' as const,
+                          borderColor: gatewayDistribution.datasets[0].backgroundColor,
+                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                          fill: true,
+                          tension: 0.4
+                        }]
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: {
+                            display: false
+                          }
                         },
-                        x: {
-                          display: false
+                        scales: {
+                          y: {
+                            display: false
+                          },
+                          x: {
+                            display: false
+                          }
                         }
-                      }
-                    }}
-                  />
+                      }}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <p className="text-xs text-gray-500">No data</p>
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col justify-between">
-                  {paymentMethodDistribution.labels.map((label, index) => (
+                  {gatewayDistribution.labels.map((label, index) => (
                     <div key={label} className="flex items-center space-x-2">
                       <div
                         className="w-3 h-3 rounded-full"
                         style={{
-                          backgroundColor: paymentMethodDistribution.datasets[0].backgroundColor[index]
+                          backgroundColor: gatewayDistribution.datasets[0].backgroundColor[index]
                         }}
                       ></div>
                       <span className="text-xs text-gray-600">{label}</span>
@@ -536,7 +656,7 @@ const DashboardHome: React.FC = () => {
 
             <div className="text-center">
               <p className="text-sm text-gray-600">TOTAL AMOUNT</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(dashboardData.totalGTV)}</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(aggregatedData.totalGTV)}</p>
             </div>
           </motion.div>
 
@@ -553,16 +673,22 @@ const DashboardHome: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-              {dashboardData.recentTransactions.map((transaction, index) => (
-                <motion.div
-                  key={transaction.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
-                >
-                  <TransactionCard transaction={transaction} />
-                </motion.div>
-              ))}
+              {recentTransactions.length > 0 ? (
+                recentTransactions.map((transaction, index) => (
+                  <motion.div
+                    key={transaction.paymentId}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: index * 0.1 }}
+                  >
+                    <TransactionCard transaction={transaction} />
+                  </motion.div>
+                ))
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-gray-500">No recent transactions</p>
+                </div>
+              )}
             </div>
           </motion.div>
         </div>
@@ -582,11 +708,11 @@ const StatCard: React.FC<{
 }> = ({ icon, value, label, iconBg, trend, trendValue }) => {
   const trendColor = trend === 'up' ? 'text-green-600' : 'text-red-600';
   const trendIcon = trend === 'up' ? (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
     </svg>
   ) : (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
     </svg>
   );
@@ -618,7 +744,21 @@ const StatCard: React.FC<{
 
 // Component for Transaction Cards
 const TransactionCard: React.FC<{ transaction: Transaction }> = ({ transaction }) => {
-  const { icon, color } = getPaymentMethodIcon(transaction.paymentMethod);
+  const getPaymentMethodIcon = (method: string) => {
+    const icons: Record<string, { icon: React.ReactNode; color: string }> = {
+      card: { icon: <CreditCardIcon className="w-5 h-5" />, color: 'text-blue-600' },
+      netbanking: { icon: <BanknotesIcon className="w-5 h-5" />, color: 'text-green-600' },
+      upi: { icon: <QrCodeIcon className="w-5 h-5" />, color: 'text-purple-600' },
+      wallet: { icon: <WalletIcon className="w-5 h-5" />, color: 'text-teal-600' },
+      cod: { icon: <TruckIcon className="w-5 h-5" />, color: 'text-orange-600' },
+      payu: { icon: <CurrencyDollarIcon className="w-5 h-5" />, color: 'text-indigo-600' },
+      authorize: { icon: <CurrencyDollarIcon className="w-5 h-5" />, color: 'text-pink-600' }
+    };
+
+    return icons[method] || { icon: <CurrencyDollarIcon className="w-5 h-5" />, color: 'text-gray-600' };
+  };
+
+  const { icon, color } = getPaymentMethodIcon(transaction.paymentSource);
 
   return (
     <div className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
@@ -629,19 +769,19 @@ const TransactionCard: React.FC<{ transaction: Transaction }> = ({ transaction }
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 truncate">ID: {transaction.id}</p>
+        <p className="text-sm font-medium text-gray-900 truncate">ID: {transaction.paymentId}</p>
         <div className="flex items-center space-x-2 mt-1">
-          {getStatusBadge(transaction.status)}
+          {getStatusBadge(transaction.paymentStatus)}
           <span className="text-sm font-semibold text-gray-900">
-            {formatCurrency(transaction.amount, transaction.currency)}
+            {formatCurrency(transaction.amount)}
           </span>
         </div>
         <p className="text-xs text-gray-500 mt-1">
-          {transaction.date} • {transaction.time}
+          {formatDate(transaction.createdAt)} • {formatTime(transaction.createdAt)}
         </p>
       </div>
     </div>
   );
 };
-  
+
 export default DashboardHome;
