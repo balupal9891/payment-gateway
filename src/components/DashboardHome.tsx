@@ -117,7 +117,7 @@ const KYCVerification = () => {
   const isMobile = useMediaQuery({ maxWidth: 768 });
 
   const handleCompleteKYC = () => {
-    navigate('/onboarding');
+    navigate('/vendor/onboarding');
   };
 
   return (
@@ -251,16 +251,17 @@ const formatTime = (dateString: string) => {
 const DashboardHome: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState('Last 7 days');
   const [loading, setLoading] = useState(true);
-  const [kycCompleted, setKycCompleted] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardPeriodData[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [comparisons, setComparisons] = useState<Comparisons | null>(null);
   const [error, setError] = useState<string | null>(null);
   const isMobile = useMediaQuery({ maxWidth: 768 });
 
+
   // Get vendorId from Redux (replace with your actual selector)
   const { user } = useUser();
   const vendorId = user?.vendorId;
+  console.log( "inside",user.formStatus !== "COMPLETED");
 
   // Fetch dashboard data
   const fetchDashboardData = async (filter: string) => {
@@ -433,7 +434,7 @@ const DashboardHome: React.FC = () => {
   return (
     <>
       {/* KYC Verification Banner */}
-      {!kycCompleted && <KYCVerification />}
+      {user?.formStatus !== "COMPLETED" && <KYCVerification />}
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-6 pb-4 px-4 sm:px-6">
         {/* Left Column */}

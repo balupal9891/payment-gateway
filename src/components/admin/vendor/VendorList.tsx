@@ -24,8 +24,11 @@ interface Vendor {
   vendorId: string | number;
   vendorName: string;
   email?: string;
-  mobileNumber?: string;
-  role?: string;
+  mobile?: string;
+  role?: {
+    roleId: string;
+    roleName: string;
+  };
 }
 
 interface SuccessToastProps {
@@ -116,7 +119,7 @@ const VendorList: React.FC<VendorListProps> = ({ onEditVendor }) => {
       return (
         vendor.vendorName?.toLowerCase().includes(searchLower) ||
         vendor.email?.toLowerCase().includes(searchLower) ||
-        vendor.mobileNumber?.toLowerCase().includes(searchLower) ||
+        vendor.mobile?.toLowerCase().includes(searchLower) ||
         vendor.vendorId?.toString().toLowerCase().includes(searchLower)
       );
     });
@@ -314,7 +317,7 @@ const VendorList: React.FC<VendorListProps> = ({ onEditVendor }) => {
                       </h3>
                       <div className="space-y-1 text-xs sm:text-sm text-gray-500">
                         <p>ID: {vendor.vendorId}</p>
-                        <p>Type: {vendor.role}</p>
+                        <p>Type: {vendor.role?.roleName || "N/A"}</p>
                       </div>
                     </div>
                   </div>
@@ -330,7 +333,7 @@ const VendorList: React.FC<VendorListProps> = ({ onEditVendor }) => {
                     <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
                       <Phone className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
                       <span className="text-gray-700 text-xs sm:text-sm">
-                        {vendor.mobileNumber || "N/A"}
+                        {vendor.mobile || "N/A"}
                       </span>
                     </div>
                   </div>

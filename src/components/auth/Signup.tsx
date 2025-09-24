@@ -334,35 +334,47 @@ export default function SignupPage() {
         <div className="hidden lg:flex lg:flex-1 bg-gradient-to-br from-teal-600 via-teal-700 to-teal-800 relative overflow-hidden">
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="relative z-10 px-12 text-white">
-              <h1 className="text-4xl font-bold mb-6">Welcome to eSIM World</h1>
-              <p className="text-xl mb-8">Connect globally with instant eSIM activation. No physical SIM cards needed.</p>
-              
-              <div className="space-y-4 mb-8">
-                <div className="flex items-center">
-                  <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center mr-3">
-                    <CheckCircle size={16} className="text-white" />
-                  </div>
-                  <span>Instant activation worldwide</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center mr-3">
-                    <CheckCircle size={16} className="text-white" />
-                  </div>
-                  <span>200+ countries coverage</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center mr-3">
-                    <CheckCircle size={16} className="text-white" />
-                  </div>
-                  <span>No roaming charges</span>
-                </div>
-              </div>
-
-              {/* Animated circles in background */}
-              <div className="absolute -top-20 -left-20 w-64 h-64 rounded-full bg-teal-500 opacity-20 animate-pulse"></div>
-              <div className="absolute -bottom-20 -right-20 w-80 h-80 rounded-full bg-teal-400 opacity-15 animate-ping"></div>
-              <div className="absolute top-1/2 right-1/4 w-40 h-40 rounded-full bg-white opacity-10 animate-bounce"></div>
-            </div>
+  <h1 className="text-4xl font-bold mb-6">Simplify Global Payments</h1>
+  <p className="text-xl mb-8">Unify payment processing with our multi-gateway platform. Fast integration, maximum flexibility.</p>
+ 
+  <div className="space-y-4 mb-8">
+    <div className="flex items-center">
+      <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center mr-3">
+        <CheckCircle size={16} className="text-white" />
+      </div>
+      <span>Integrate once, access 20+ payment gateways</span>
+    </div>
+    <div className="flex items-center">
+      <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center mr-3">
+        <CheckCircle size={16} className="text-white" />
+      </div>
+      <span>Global payment processing in 150+ currencies</span>
+    </div>
+    <div className="flex items-center">
+      <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center mr-3">
+        <CheckCircle size={16} className="text-white" />
+      </div>
+      <span>Seamless vendor onboarding & management</span>
+    </div>
+    <div className="flex items-center">
+      <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center mr-3">
+        <CheckCircle size={16} className="text-white" />
+      </div>
+      <span>Advanced fraud protection & compliance</span>
+    </div>
+    <div className="flex items-center">
+      <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center mr-3">
+        <CheckCircle size={16} className="text-white" />
+      </div>
+      <span>Real-time analytics & reporting dashboard</span>
+    </div>
+  </div>
+  
+  {/* Animated circles in background */}
+  <div className="absolute -top-20 -left-20 w-64 h-64 rounded-full bg-teal-500 opacity-20 animate-pulse"></div>
+  <div className="absolute -bottom-20 -right-20 w-80 h-80 rounded-full bg-teal-400 opacity-15 animate-ping"></div>
+  <div className="absolute top-1/2 right-1/4 w-40 h-40 rounded-full bg-white opacity-10 animate-bounce"></div>
+</div>
           </div>
         </div>
 

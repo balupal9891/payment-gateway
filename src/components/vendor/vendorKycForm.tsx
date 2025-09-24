@@ -1,18 +1,10 @@
-import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Upload, AlertCircle, CheckCircle, Building, FileText, CreditCard, Globe, Phone, X, User } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, Upload, AlertCircle, CheckCircle, Building, FileText, CreditCard, Globe, Phone, X, User, Shield, ArrowRight, Info, HelpCircle } from 'lucide-react';
 import baseURL, { verfifyUrl } from '../../API/baseUrl';
 import { useUser } from '../../store/slices/userSlice';
 
 
-
-
-// interface Step {
-//     id: number;
-//     title: string;
-//     icon: React.ReactNode;
-// }
-
-// Type definitions
+// Type definitions (unchanged from your code)
 interface Director {
     din: string;
     name: string;
@@ -23,11 +15,11 @@ interface Director {
 
 interface Documents {
     pan: File | null;
-    aadhar: File | null;
     boardResolution: File | null;
     cinCertificate: File | null;
     aoa: File | null;
     moa: File | null;
+    bankCheque: File | null;
 }
 
 interface FormData {
@@ -81,13 +73,12 @@ interface ValidationErrors {
     [key: string]: string;
 }
 
-
 const VendorOnboarding: React.FC = () => {
-
     const { user } = useUser();
+    const [errors, setErrors] = useState<ValidationErrors>({});
+    const [loading, setLoading] = useState<boolean>(false);
 
-
-    const [currentStep, setCurrentStep] = useState<number>(1);
+    const [currentStep, setCurrentStep] = useState<number>(7);
     const [formData, setFormData] = useState<FormData>({
         panNumber: '',
         panName: '',
@@ -107,11 +98,11 @@ const VendorOnboarding: React.FC = () => {
         directorList: [],
         documents: {
             pan: null,
-            aadhar: null,
             boardResolution: null,
             cinCertificate: null,
             aoa: null,
-            moa: null
+            moa: null,
+            bankCheque: null
         },
         accountNumber: '',
         ifscCode: '',
@@ -121,27 +112,29 @@ const VendorOnboarding: React.FC = () => {
         bankResponse: null,
         websiteLink: '',
         lineOfBusiness: '',
-        // contactUs: '',
         mobileAppLink: '',
         tncLink: '',
-        refundPolicyLink: '', 
-        cancellationPolicyLink: '', 
+        refundPolicyLink: '',
+        cancellationPolicyLink: '',
         contactSupportInfo: '',
     });
 
-    const [errors, setErrors] = useState<ValidationErrors>({});
-    const [loading, setLoading] = useState<boolean>(false);
+
+
+
+
 
     const updateFormData = <K extends keyof FormData>(field: K, value: FormData[K]): void => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
+    // Validation functions (unchanged from your code)
     const validatePAN = (pan: string) => /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan);
     const validateGST = (gst: string) => /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gst);
     const validateCIN = (cin: string) => /^[LU][0-9]{5}[A-Z]{2}[0-9]{4}[A-Z]{3}[0-9]{6}$/.test(cin);
     const validateIFSC = (ifsc: string) => /^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc);
 
-    // API Calls
+    // API Calls (unchanged from your code)
     const verifyPAN = async () => {
         if (!validatePAN(formData.panNumber) || !formData.panName || !formData.dob) {
             setErrors({ panNumber: 'Please fill all PAN details correctly' });
@@ -150,7 +143,6 @@ const VendorOnboarding: React.FC = () => {
 
         setLoading(true);
         try {
-            // Mock API call - replace with actual endpoint
             const response = await fetch(`${verfifyUrl}/pan/lite/verify`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -212,7 +204,7 @@ const VendorOnboarding: React.FC = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     gstin: formData.gstNumber,
-                    businessName: formData.businessName // Add business name to the request
+                    businessName: formData.businessName
                 })
             });
 
@@ -222,7 +214,6 @@ const VendorOnboarding: React.FC = () => {
                 updateFormData('gstVerified', true);
                 updateFormData('gstResponse', result.data);
 
-                // Check if CIN is required based on business type
                 if (result.data.constitutionOfBusiness?.toLowerCase().includes('limited') ||
                     result.data.constitutionOfBusiness?.toLowerCase().includes('company')) {
                     updateFormData('hasCIN', true);
@@ -235,7 +226,7 @@ const VendorOnboarding: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }; 29810110041666
 
     const verifyCIN = async () => {
         if (!validateCIN(formData.cinNumber)) {
@@ -310,24 +301,32 @@ const VendorOnboarding: React.FC = () => {
 
     const getSteps = () => {
         const steps = [
-            { id: 1, title: 'PAN Verification', icon: <FileText className="w-4 h-4" /> },
-            { id: 2, title: 'GST Details', icon: <Building className="w-4 h-4" /> }
+            { id: 1, title: 'PAN Verification', icon: <FileText className="w-4 h-4" />, description: 'Verify your PAN details' },
+            { id: 2, title: 'GST Details', icon: <Building className="w-4 h-4" />, description: 'Enter your GST information' }
         ];
 
         let stepId = 3;
 
         if (formData.hasCIN === true) {
-            steps.push({ id: stepId++, title: 'CIN Details', icon: <Building className="w-4 h-4" /> });
+            steps.push({ id: stepId++, title: 'CIN Details', icon: <Building className="w-4 h-4" />, description: 'Company incorporation details' });
         }
 
         if (formData.directorList.length > 0) {
-            steps.push({ id: stepId++, title: 'Director', icon: <User className="w-4 h-4" /> });
+            steps.push({ id: stepId++, title: 'Director', icon: <User className="w-4 h-4" />, description: 'Select company director' });
+        }
+
+        // Move Bank Details before Documents
+        steps.push(
+            { id: stepId++, title: 'Bank Details', icon: <CreditCard className="w-4 h-4" />, description: 'Add your bank account' }
+        );
+
+        // Add Documents step only after bank verification
+        if (formData.bankVerified) {
+            steps.push({ id: stepId++, title: 'Documents', icon: <Upload className="w-4 h-4" />, description: 'Upload required documents' });
         }
 
         steps.push(
-            { id: stepId++, title: 'Documents', icon: <Upload className="w-4 h-4" /> },
-            { id: stepId++, title: 'Bank Details', icon: <CreditCard className="w-4 h-4" /> },
-            { id: stepId++, title: 'Business Info', icon: <Globe className="w-4 h-4" /> }
+            { id: stepId++, title: 'Business Info', icon: <Globe className="w-4 h-4" />, description: 'Complete business profile' }
         );
 
         return steps;
@@ -350,63 +349,82 @@ const VendorOnboarding: React.FC = () => {
     };
 
     const renderStepIndicator = () => (
-        <div className="flex justify-center mb-6">
-            <div className="flex items-center space-x-2">
+        <div className="flex flex-col items-center mb-6">
+            <div className="flex items-center justify-center space-x-1 sm:space-x-2 mb-4">
                 {steps.map((step, index) => (
                     <div key={step.id} className="flex items-center">
-                        <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all duration-300 ${currentStep > step.id
-                            ? 'bg-teal-500 border-teal-500 text-white'
-                            : currentStep === step.id
-                                ? 'bg-teal-500 border-teal-500 text-white'
-                                : 'border-gray-300 text-gray-400'
-                            }`}>
-                            {currentStep > step.id ? <CheckCircle className="w-4 h-4" /> : step.icon}
+                        <div
+                            className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-300 ease-in-out ${currentStep > step.id
+                                ? 'bg-teal-600 border-teal-600 text-white shadow-sm'
+                                : currentStep === step.id
+                                    ? 'bg-white border-teal-600 text-teal-600 shadow-md ring-2 ring-teal-100'
+                                    : 'border-gray-200 text-gray-400 bg-white'
+                                }`}
+                        >
+                            {currentStep > step.id ? (
+                                <CheckCircle className="w-5 h-5" />
+                            ) : (
+                                React.cloneElement(step.icon, { className: "w-4 h-4" })
+                            )}
                         </div>
                         {index < steps.length - 1 && (
-                            <div className={`w-6 h-0.5 mx-1 ${currentStep > step.id ? 'bg-teal-500' : 'bg-gray-300'}`} />
+                            <div
+                                className={`w-8 h-0.5 mx-1 transition-all duration-300 ${currentStep > step.id ? 'bg-teal-600' : 'bg-gray-200'
+                                    }`}
+                            />
                         )}
                     </div>
                 ))}
             </div>
+
+            {/* Enhanced step title with better styling */}
+            <div className="text-center px-3 w-full">
+                <div className="inline-flex items-center bg-gradient-to-r from-teal-50 to-emerald-50 rounded-lg px-4 py-2 mb-2 border border-teal-100 shadow-sm">
+                    <span className="text-teal-700 font-medium text-sm mr-2">
+                        Step {currentStep} of {steps.length}
+                    </span>
+                    <div className="h-4 w-px bg-teal-200 mx-2"></div>
+                    <h3 className="text-lg font-semibold text-teal-800">
+                        {steps.find(step => step.id === currentStep)?.title}
+                    </h3>
+                </div>
+            </div>
         </div>
     );
 
-
     const renderPANStep = () => (
-        <div className="space-y-4">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">PAN Verification</h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">PAN Number</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">PAN Number *</label>
                     <input
                         type="text"
                         value={formData.panNumber}
                         onChange={(e) => updateFormData('panNumber', e.target.value.toUpperCase())}
                         placeholder="ABCDE1234F"
                         maxLength={10}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 shadow-sm transition-all"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Name as per PAN</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Name as per PAN *</label>
                     <input
                         type="text"
                         value={formData.panName}
                         onChange={(e) => updateFormData('panName', e.target.value)}
-                        placeholder="Enter name"
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                        placeholder="Enter name exactly as on PAN card"
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 shadow-sm transition-all"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth *</label>
                     <input
                         type="date"
                         value={formData.dob}
                         onChange={(e) => updateFormData('dob', e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 shadow-sm transition-all"
                     />
                 </div>
             </div>
@@ -415,14 +433,24 @@ const VendorOnboarding: React.FC = () => {
                 <button
                     onClick={verifyPAN}
                     disabled={loading}
-                    className="w-full bg-teal-500 text-white py-3 rounded-lg hover:bg-teal-600 disabled:opacity-50 transition-colors"
+                    className="w-full bg-teal-500 text-white py-3 rounded-lg hover:bg-teal-600 disabled:opacity-50 transition-all shadow-md hover:shadow-lg flex items-center justify-center"
                 >
-                    {loading ? 'Verifying...' : 'Verify PAN'}
+                    {loading ? (
+                        <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Verifying...
+                        </>
+                    ) : (
+                        <>
+                            Verify PAN
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                        </>
+                    )}
                 </button>
             )}
 
             {formData.panVerified && formData.panResponse && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 shadow-sm">
                     <div className="flex items-center mb-2">
                         <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
                         <span className="text-green-800 font-medium">PAN Verified Successfully</span>
@@ -435,71 +463,74 @@ const VendorOnboarding: React.FC = () => {
             )}
 
             {errors.panNumber && (
-                <p className="text-red-500 text-sm flex items-center">
-                    <AlertCircle className="w-4 h-4 mr-1" />{errors.panNumber}
-                </p>
+                <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+                    <p className="text-red-700 text-sm flex items-center">
+                        <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+                        {errors.panNumber}
+                    </p>
+                </div>
             )}
         </div>
     );
 
     const renderGSTStep = () => (
-        <div className="space-y-4">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">GST Details</h2>
+        <div className="space-y-6">
 
             {formData.gstList.length > 0 ? (
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Select GST Number</label>
-                    <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-3">Select GST Number</label>
+                    <div className="space-y-3">
                         {formData.gstList.map((gst, index) => (
-                            <label key={index} className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${formData.gstNumber === gst.gstin ? 'border-teal-500 bg-teal-50' : 'border-gray-300'
-                                }`}>
+                            <label key={index} className={`flex items-start p-4 border rounded-lg cursor-pointer transition-all ${formData.gstNumber === gst.gstin ? 'border-teal-500 bg-teal-50 shadow-sm' : 'border-gray-300 hover:border-teal-300'}`}>
                                 <input
                                     type="radio"
                                     name="gstSelection"
                                     value={gst.gstin}
                                     checked={formData.gstNumber === gst.gstin}
                                     onChange={() => updateFormData('gstNumber', gst.gstin)}
-                                    className="mr-3"
+                                    className="mt-1 mr-3"
                                 />
                                 <div>
-                                    <div className="font-medium">{gst.gstin}</div>
-                                    <div className="text-sm text-gray-600">{gst.state} - {gst.status}</div>
+                                    <div className="font-medium text-gray-800">{gst.gstin}</div>
+                                    <div className="text-sm text-gray-600 mt-1">{gst.state} - {gst.status}</div>
                                 </div>
                             </label>
                         ))}
                     </div>
 
-                    <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Business Name as per GST</label>
+                    <div className="mt-5">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Business Name as per GST *</label>
                         <input
                             type="text"
                             value={formData.businessName}
                             onChange={(e) => updateFormData('businessName', e.target.value)}
                             placeholder="Enter business name as registered in GST"
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 shadow-sm transition-all"
                         />
                     </div>
                 </div>
             ) : (
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">GST Number</label>
-                    <input
-                        type="text"
-                        value={formData.gstNumber}
-                        onChange={(e) => updateFormData('gstNumber', e.target.value.toUpperCase())}
-                        placeholder="29ABCDE1234F1Z5"
-                        maxLength={15}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                    />
+                <div className="space-y-5">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">GST Number *</label>
+                        <input
+                            type="text"
+                            value={formData.gstNumber}
+                            onChange={(e) => updateFormData('gstNumber', e.target.value.toUpperCase())}
+                            placeholder="29ABCDE1234F1Z5"
+                            maxLength={15}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 shadow-sm transition-all"
+                        />
+                    </div>
 
-                    <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Business Name as per GST</label>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Business Name as per GST *</label>
                         <input
                             type="text"
                             value={formData.businessName}
                             onChange={(e) => updateFormData('businessName', e.target.value)}
                             placeholder="Enter business name as registered in GST"
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 shadow-sm transition-all"
                         />
                     </div>
                 </div>
@@ -509,14 +540,24 @@ const VendorOnboarding: React.FC = () => {
                 <button
                     onClick={verifyGST}
                     disabled={loading}
-                    className="w-full bg-teal-500 text-white py-3 rounded-lg hover:bg-teal-600 disabled:opacity-50 transition-colors"
+                    className="w-full bg-teal-500 text-white py-3 rounded-lg hover:bg-teal-600 disabled:opacity-50 transition-all shadow-md hover:shadow-lg flex items-center justify-center"
                 >
-                    {loading ? 'Verifying...' : 'Verify GST'}
+                    {loading ? (
+                        <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Verifying...
+                        </>
+                    ) : (
+                        <>
+                            Verify GST
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                        </>
+                    )}
                 </button>
             )}
 
             {formData.gstVerified && formData.gstResponse && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 shadow-sm">
                     <div className="flex items-center mb-2">
                         <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
                         <span className="text-green-800 font-medium">GST Verified Successfully</span>
@@ -531,26 +572,28 @@ const VendorOnboarding: React.FC = () => {
             )}
 
             {errors.gstNumber && (
-                <p className="text-red-500 text-sm flex items-center">
-                    <AlertCircle className="w-4 h-4 mr-1" />{errors.gstNumber}
-                </p>
+                <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+                    <p className="text-red-700 text-sm flex items-center">
+                        <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+                        {errors.gstNumber}
+                    </p>
+                </div>
             )}
         </div>
     );
 
     const renderCINStep = () => (
-        <div className="space-y-4">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">CIN Details</h2>
+        <div className="space-y-6">
 
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">CIN Number</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">CIN Number *</label>
                 <input
                     type="text"
                     value={formData.cinNumber}
                     onChange={(e) => updateFormData('cinNumber', e.target.value.toUpperCase())}
                     placeholder="U72900KA2015PTC082988"
                     maxLength={21}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 shadow-sm transition-all"
                 />
             </div>
 
@@ -558,14 +601,24 @@ const VendorOnboarding: React.FC = () => {
                 <button
                     onClick={verifyCIN}
                     disabled={loading}
-                    className="w-full bg-teal-500 text-white py-3 rounded-lg hover:bg-teal-600 disabled:opacity-50 transition-colors"
+                    className="w-full bg-teal-500 text-white py-3 rounded-lg hover:bg-teal-600 disabled:opacity-50 transition-all shadow-md hover:shadow-lg flex items-center justify-center"
                 >
-                    {loading ? 'Verifying...' : 'Verify CIN'}
+                    {loading ? (
+                        <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Verifying...
+                        </>
+                    ) : (
+                        <>
+                            Verify CIN
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                        </>
+                    )}
                 </button>
             )}
 
             {formData.cinVerified && formData.cinResponse && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 shadow-sm">
                     <div className="flex items-center mb-2">
                         <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
                         <span className="text-green-800 font-medium">CIN Verified Successfully</span>
@@ -579,148 +632,205 @@ const VendorOnboarding: React.FC = () => {
             )}
 
             {errors.cinNumber && (
-                <p className="text-red-500 text-sm flex items-center">
-                    <AlertCircle className="w-4 h-4 mr-1" />{errors.cinNumber}
-                </p>
+                <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+                    <p className="text-red-700 text-sm flex items-center">
+                        <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+                        {errors.cinNumber}
+                    </p>
+                </div>
             )}
         </div>
     );
 
     const renderDirectorStep = () => (
-        <div className="space-y-4">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Select Director</h2>
+        <div className="space-y-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Select a Director</h3>
 
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {formData.directorList.map((director, index) => (
-                    <label key={index} className={`flex items-start p-3 border rounded-lg cursor-pointer transition-colors ${formData.selectedDirector === director.name ? 'border-teal-500 bg-teal-50' : 'border-gray-300'
-                        }`}>
-                        <input
-                            type="radio"
-                            name="selectedDirector"
-                            value={director.name}
-                            checked={formData.selectedDirector === director.name}
-                            onChange={() => updateFormData('selectedDirector', director.name)}
-                            className="mr-3 mt-1"
-                        />
+                    <div
+                        key={index}
+                        onClick={() => updateFormData('selectedDirector', director.name)}
+                        className={`p-4 border rounded-lg cursor-pointer transition-all ${formData.selectedDirector === director.name
+                            ? 'border-teal-500 bg-teal-50 shadow-md ring-2 ring-teal-500 ring-opacity-50'
+                            : 'border-gray-200 hover:border-teal-300 hover:bg-gray-50'
+                            }`}
+                    >
                         <div className="flex-1">
-                            <div className="font-medium">{director.name}</div>
-                            <div className="text-sm text-gray-600">DIN: {director.din}</div>
-                            <div className="text-sm text-gray-600">{director.designation}</div>
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="font-medium text-gray-800 text-base tracking-tight">
+                                    {director.name}
+                                </div>
+                                {formData.selectedDirector === director.name && (
+                                    <div className="w-5 h-5 flex items-center justify-center bg-teal-500 rounded-full">
+                                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="text-sm text-gray-600 mt-1.5">
+                                <span className="font-medium">DIN:</span> {director.din}
+                            </div>
+                            <div className="text-sm text-gray-600 mt-1">
+                                {director.designation}
+                            </div>
                         </div>
-                    </label>
+                    </div>
                 ))}
             </div>
         </div>
     );
 
     const renderDocumentStep = () => {
-        const requiredDocs = [
-            { key: 'pan', label: 'PAN Card' },
-            { key: 'aadhar', label: 'Aadhar Card' },
-            ...(formData.cinVerified ? [
-                { key: 'boardResolution', label: 'Board Resolution' },
-                { key: 'cinCertificate', label: 'CIN Certificate' }
-            ] : [])
+        // Classify documents into categories
+        const documentCategories = [
+            {
+                title: "Vendor Documents",
+                description: "Personal identification documents required for verification",
+                documents: [
+                    { key: "pan", label: "PAN Card", description: "Upload scanned copy of PAN card" }
+                ]
+            },
+            {
+                title: "Business Documents",
+                description: "Official business registration and authorization documents",
+                documents: [
+                    { key: "aoa", label: "AOA", description: "Certificate of Appointment / Authority (aoa)" },
+                    { key: "moa", label: "MOA", description: "Memorandum of Association (MOA)" },
+                    ...(formData.cinVerified ? [
+                        { key: "boardResolution", label: "Board Resolution", description: "Authorizing signatory for business" },
+                        { key: "cinCertificate", label: "CIN Certificate", description: "Company incorporation certificate" }
+                    ] : [])
+                ]
+            },
+            {
+                title: "Bank Documents",
+                description: "Bank verification documents",
+                documents: [
+                    { key: "bankCheque", label: "Cancelled/Voided Bank Cheque", description: "Upload a cancelled or voided cheque for bank verification" }
+                ]
+            }
         ];
 
         return (
-            <div className="space-y-4">
-                <h2 className="text-xl font-bold text-gray-800 mb-4">Upload Documents</h2>
+            <div className="space-y-6">
 
-                {requiredDocs.map(doc => (
-                    <div key={doc.key} className="border border-gray-300 rounded-lg p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h3 className="font-medium text-gray-800">{doc.label}</h3>
-                                {formData.documents[doc.key as keyof Documents] && (
-                                    <p className="text-sm text-green-600">
-                                        {formData.documents[doc.key as keyof Documents]!.name}
-                                    </p>
-                                )}
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                {formData.documents[doc.key as keyof Documents] ? (
-                                    <>
-                                        <CheckCircle className="w-5 h-5 text-green-500" />
-                                        <button
-                                            onClick={() => handleFileUpload(doc.key as keyof Documents, null)}
-                                            className="p-1 text-red-500 hover:bg-red-100 rounded"
-                                        >
-                                            <X className="w-4 h-4" />
-                                        </button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <input
-                                            type="file"
-                                            accept=".pdf,.jpg,.jpeg,.png"
-                                            onChange={(e) => handleFileUpload(doc.key as keyof Documents, e.target.files?.[0] || null)}
-                                            className="hidden"
-                                            id={`doc-${doc.key}`}
-                                        />
-                                        <label
-                                            htmlFor={`doc-${doc.key}`}
-                                            className="flex items-center px-3 py-2 bg-teal-500 text-white rounded-lg cursor-pointer hover:bg-teal-600"
-                                        >
-                                            <Upload className="w-4 h-4 mr-2" />
-                                            Upload
-                                        </label>
-                                    </>
-                                )}
+                {/* Document categories in flexible layout */}
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-6 items-start">
+
+
+                    {documentCategories.map((category, categoryIndex) => (
+                        <div
+                            key={categoryIndex}
+                            className="bg-gray-50 rounded-lg p-4 border border-gray-200 grid-cols-1 items-start min-w-[300px]"
+                        >
+                            <h3 className="font-semibold text-gray-800 mb-1">{category.title}</h3>
+                            <p className="text-sm text-gray-600 mb-4">{category.description}</p>
+
+                            <div className="space-y-3 grid grid-cols-2 gap-1">
+                                {category.documents.map((doc) => (
+                                    <div key={doc.key} className="border border-gray-300 rounded-lg p-3 bg-white transition-all hover:shadow-sm">
+                                        <div className="flex items-center justify-between h-auto">
+                                            <div className="flex-1">
+                                                <h4 className="font-medium text-gray-800 text-sm">{doc.label}</h4>
+                                                <p className="text-xs text-gray-500 mt-1">{doc.description}</p>
+
+                                                {formData.documents[doc.key as keyof Documents] && (
+                                                    <p className="text-xs text-green-600 mt-1 flex items-center">
+                                                        <CheckCircle className="w-3 h-3 mr-1" />
+                                                        {(formData.documents[doc.key as keyof Documents] as any).name ||
+                                                            (formData.documents[doc.key as keyof Documents] as any).filename ||
+                                                            "File attached"}
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            <div className="flex items-center space-x-1">
+                                                {formData.documents[doc.key as keyof Documents] ? (
+                                                    <button
+                                                        onClick={() => handleFileUpload(doc.key as keyof Documents, null)}
+                                                        className="p-1 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                                                        title="Remove file"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                ) : (
+                                                    <>
+                                                        <input
+                                                            type="file"
+                                                            accept=".pdf,.jpg,.jpeg,.png"
+                                                            onChange={(e) => handleFileUpload(doc.key as keyof Documents, e.target.files?.[0] || null)}
+                                                            className="hidden"
+                                                            id={`doc-${doc.key}`}
+                                                        />
+                                                        <label
+                                                            htmlFor={`doc-${doc.key}`}
+                                                            className="flex items-center px-3 py-1.5 bg-teal-500 text-white rounded-lg cursor-pointer hover:bg-teal-600 transition-all shadow-sm text-xs"
+                                                        >
+                                                            <Upload className="w-3 h-3 mr-1" />
+                                                            Upload
+                                                        </label>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                    </div>
-                ))}
+                    ))}
+                </div>
             </div>
         );
     };
 
-    const renderBankStep = () => (
-        <div className="space-y-4">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Bank Details</h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    const renderBankStep = () => (
+        <div className="space-y-6">
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Account Number</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Account Number *</label>
                     <input
                         type="text"
                         value={formData.accountNumber}
                         onChange={(e) => updateFormData('accountNumber', e.target.value)}
                         placeholder="Enter account number"
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 shadow-sm transition-all"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">IFSC Code</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">IFSC Code *</label>
                     <input
                         type="text"
                         value={formData.ifscCode}
                         onChange={(e) => updateFormData('ifscCode', e.target.value.toUpperCase())}
                         placeholder="SBIN0001234"
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 shadow-sm transition-all"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number *</label>
                     <input
                         type="tel"
                         value={formData.phone}
                         onChange={(e) => updateFormData('phone', e.target.value)}
                         placeholder="1234567890"
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 shadow-sm transition-all"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Account Holder Name *</label>
                     <input
-                        type="tel"
+                        type="text"
                         value={formData.bankName}
                         onChange={(e) => updateFormData('bankName', e.target.value)}
-                        placeholder="Enter bank name"
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                        placeholder="Name as in bank records"
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 shadow-sm transition-all"
                     />
                 </div>
             </div>
@@ -729,14 +839,24 @@ const VendorOnboarding: React.FC = () => {
                 <button
                     onClick={verifyBank}
                     disabled={loading}
-                    className="w-full bg-teal-500 text-white py-3 rounded-lg hover:bg-teal-600 disabled:opacity-50 transition-colors"
+                    className="w-full bg-teal-500 text-white py-3 rounded-lg hover:bg-teal-600 disabled:opacity-50 transition-all shadow-md hover:shadow-lg flex items-center justify-center"
                 >
-                    {loading ? 'Verifying...' : 'Verify Bank Details'}
+                    {loading ? (
+                        <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Verifying...
+                        </>
+                    ) : (
+                        <>
+                            Verify Bank Details
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                        </>
+                    )}
                 </button>
             )}
 
             {formData.bankVerified && formData.bankResponse && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 shadow-sm">
                     <div className="flex items-center mb-2">
                         <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
                         <span className="text-green-800 font-medium">Bank Details Verified</span>
@@ -750,102 +870,109 @@ const VendorOnboarding: React.FC = () => {
             )}
 
             {errors.bankDetails && (
-                <p className="text-red-500 text-sm flex items-center">
-                    <AlertCircle className="w-4 h-4 mr-1" />{errors.bankDetails}
-                </p>
+                <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+                    <p className="text-red-700 text-sm flex items-center">
+                        <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+                        {errors.bankDetails}
+                    </p>
+                </div>
             )}
         </div>
     );
 
     const renderBusinessStep = () => (
-        <div className="space-y-4">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Business Information</h2>
+  <div className="w-full bg-gray-50 p-8 rounded-2xl shadow-md space-y-6 border border-gray-200">
+    {/* Title */}
+    <h2 className="text-3xl font-bold text-gray-800 text-center pb-4 border-b border-gray-200">
+      Business Information
+    </h2>
 
-            {/* Website Link Field */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Website Link</label>
-                <input
-                    type="url"
-                    value={formData.websiteLink}
-                    onChange={(e) => updateFormData('websiteLink', e.target.value)}
-                    placeholder="https://example.com"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                />
-            </div>
+    {/* Website Link */}
+    <div>
+      <input
+        type="url"
+        value={formData.websiteLink}
+        onChange={(e) => updateFormData("websiteLink", e.target.value)}
+        placeholder="Website Link"
+        className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white text-gray-700 placeholder-gray-400"
+      />
+    </div>
 
-            {/* Mobile App Link Field */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Mobile App Link</label>
-                <input
-                    type="url"
-                    value={formData.mobileAppLink}
-                    onChange={(e) => updateFormData('mobileAppLink', e.target.value)}
-                    placeholder="https://play.google.com/store/apps/your-app"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                />
-            </div>
+    {/* Mobile App Link */}
+    <div>
+      <input
+        type="url"
+        value={formData.mobileAppLink}
+        onChange={(e) => updateFormData("mobileAppLink", e.target.value)}
+        placeholder="Mobile App Link"
+        className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white text-gray-700 placeholder-gray-400"
+      />
+    </div>
 
-            {/* Line of Business Field */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Line of Business *</label>
-                <textarea
-                    value={formData.lineOfBusiness}
-                    onChange={(e) => updateFormData('lineOfBusiness', e.target.value)}
-                    rows={3}
-                    placeholder="Describe your business activities and services"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                />
-            </div>
+    {/* Line of Business */}
+    <div>
+      <textarea
+        value={formData.lineOfBusiness}
+        onChange={(e) => updateFormData("lineOfBusiness", e.target.value)}
+        rows={3}
+        placeholder="Line of Business *"
+        className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white text-gray-700 placeholder-gray-400 resize-none"
+      />
+    </div>
 
-            {/* T&C Link Field */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Terms & Conditions Link</label>
-                <input
-                    type="url"
-                    value={formData.tncLink}
-                    onChange={(e) => updateFormData('tncLink', e.target.value)}
-                    placeholder="https://example.com/terms"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                />
-            </div>
+    {/* Terms & Conditions */}
+    <div>
+      <input
+        type="url"
+        value={formData.tncLink}
+        onChange={(e) => updateFormData("tncLink", e.target.value)}
+        placeholder="Terms & Conditions Link"
+        className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white text-gray-700 placeholder-gray-400"
+      />
+    </div>
 
-            {/* Refund Policy Link Field */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Refund Policy Link</label>
-                <input
-                    type="url"
-                    value={formData.refundPolicyLink}
-                    onChange={(e) => updateFormData('refundPolicyLink', e.target.value)}
-                    placeholder="https://example.com/refund"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                />
-            </div>
+    {/* Refund Policy */}
+    <div>
+      <input
+        type="url"
+        value={formData.refundPolicyLink}
+        onChange={(e) => updateFormData("refundPolicyLink", e.target.value)}
+        placeholder="Refund Policy Link"
+        className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white text-gray-700 placeholder-gray-400"
+      />
+    </div>
 
-            {/* Cancellation Policy Link Field */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Cancellation Policy Link</label>
-                <input
-                    type="url"
-                    value={formData.cancellationPolicyLink}
-                    onChange={(e) => updateFormData('cancellationPolicyLink', e.target.value)}
-                    placeholder="https://example.com/cancellation"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                />
-            </div>
+    {/* Cancellation Policy */}
+    <div>
+      <input
+        type="url"
+        value={formData.cancellationPolicyLink}
+        onChange={(e) => updateFormData("cancellationPolicyLink", e.target.value)}
+        placeholder="Cancellation Policy Link"
+        className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white text-gray-700 placeholder-gray-400"
+      />
+    </div>
 
-            {/* Contact Support Info Field */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Contact Support Information</label>
-                <textarea
-                    value={formData.contactSupportInfo}
-                    onChange={(e) => updateFormData('contactSupportInfo', e.target.value)}
-                    rows={3}
-                    placeholder="Email: support@example.com, Phone: +1-123-456-7890"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                />
-            </div>
-        </div>
-    );
+    {/* Contact Support */}
+    <div>
+      <textarea
+        value={formData.contactSupportInfo}
+        onChange={(e) => updateFormData("contactSupportInfo", e.target.value)}
+        rows={3}
+        placeholder="Contact Support Information *"
+        className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white text-gray-700 placeholder-gray-400 resize-none"
+      />
+      <p className="text-sm text-gray-500 mt-2 italic">
+        Provide multiple contact methods for customer support
+      </p>
+    </div>
+  </div>
+);
+
+
+
+
+
 
     const renderCurrentStep = () => {
         switch (currentStep) {
@@ -854,13 +981,15 @@ const VendorOnboarding: React.FC = () => {
             case 3:
                 if (formData.hasCIN === true) return renderCINStep();
                 if (formData.directorList.length > 0) return renderDirectorStep();
-                return renderDocumentStep();
+                return renderBankStep(); // Changed from renderDocumentStep()
             case 4:
                 if (formData.hasCIN === true && formData.directorList.length > 0) return renderDirectorStep();
-                return renderDocumentStep();
+                return renderBankStep(); // Changed from renderDocumentStep()
             case 5:
-                return renderDocumentStep();
+                return renderBankStep(); // Changed from renderDocumentStep()
             case 6:
+                // Show Documents only if bank is verified
+                if (formData.bankVerified) return renderDocumentStep();
                 return renderBankStep();
             case 7:
                 return renderBusinessStep();
@@ -876,20 +1005,27 @@ const VendorOnboarding: React.FC = () => {
             case 3:
                 if (formData.hasCIN === true) return formData.cinVerified;
                 if (formData.directorList.length > 0) return formData.selectedDirector;
-                return Object.values(formData.documents).map(doc => doc !== null);
+                return formData.bankVerified;
             case 4:
                 if (formData.hasCIN === true && formData.directorList.length > 0) return formData.selectedDirector;
-                return Object.values(formData.documents).map(doc => doc !== null);
-            case 5: return Object.values(formData.documents).map(doc => doc !== null);
-            case 6: return formData.bankVerified;
+                return formData.bankVerified;
+            case 5: return formData.bankVerified;
+            case 6:
+                // Check if all required documents are uploaded
+                if (formData.bankVerified) {
+                    const requiredDocs = ["pan", "aoa", "moa", "bankCheque"];
+                    if (formData.cinVerified) {
+                        requiredDocs.push("boardResolution", "cinCertificate");
+                    }
+                    return requiredDocs.every(docKey => formData.documents[docKey as keyof Documents] !== null);
+                }
+                return formData.bankVerified;
             case 7: return formData.lineOfBusiness && formData.contactSupportInfo;
             default: return false;
         }
     };
 
     const handleSubmit = async () => {
-        console.log(formData);
-        console.log("start")
         setLoading(true);
         const vendorId = user.vendorId;
         const apiUrl = `${baseURL}/vendor/update/${vendorId}`;
@@ -907,7 +1043,7 @@ const VendorOnboarding: React.FC = () => {
                 jsonPayload.panStatus = panResponse.status;
             }
             jsonPayload.isPanVerified = formData.panVerified;
-            console.log("start1")
+
             // GST
             const gstResponse = formData.gstResponse
             if (gstResponse) {
@@ -973,16 +1109,16 @@ const VendorOnboarding: React.FC = () => {
             if (formData.documents) {
                 for (const docKey in formData.documents) {
                     const document = (formData.documents as any)[docKey];
-                    if (document instanceof File) {
+                    if (document && document instanceof File) {
                         form.append(docKey, document);
                     }
                 }
             }
-            console.log(form);
+            console.log("Form data:", form);;
             // Step 3: Send request
             const response = await fetch(apiUrl, {
                 method: "PATCH",
-                body: form, // browser sets correct headers
+                body: form,
             });
 
             const data = await response.json();
@@ -998,172 +1134,82 @@ const VendorOnboarding: React.FC = () => {
         }
     };
 
-
-
-    // const handleSubmit = async () => {
-    //     setLoading(true);
-    //     const vendorId = user.vendorId;
-    //     const apiUrl = `${baseURL}/vendor/update/${vendorId}`;
-
-    //     try {
-    //         const formDataPayload = new FormData();
-
-    //         // Iterate over the keys of the formData state object
-    //         for (const key in formData) {
-    //             // Check if the property is a direct property of the object
-    //             if (Object.prototype.hasOwnProperty.call(formData, key)) {
-    //                 const value = (formData)[key as keyof typeof formData];
-
-    //                 // Skip the documents object, as it is handled separately
-    //                 if (key === 'documents') {
-    //                     continue;
-    //                 }
-
-    //                 // Handle different data types for FormData
-    //                 if (Array.isArray(value)) {
-    //                     // Append each item of the array individually
-    //                     value.forEach(item => formDataPayload.append(key, item));
-    //                 } else if (typeof value === 'boolean') {
-    //                     // Convert booleans to a string representation
-    //                     formDataPayload.append(key, value.toString());
-    //                 } else if (value !== null && typeof value === 'object' && !isFile(value)) {
-    //                     // Convert objects (like API responses) to a JSON string
-    //                     formDataPayload.append(key, JSON.stringify(value));
-    //                 } else if (value !== null) {
-    //                     // For all other valid types (string, number, etc.), append directly
-    //                     formDataPayload.append(key, value);
-    //                 }
-    //             }
-    //         }
-
-    //         // Handle file uploads from the documents object
-
-
-    //         console.log("formdataPayload", formDataPayload);
-    //         // Make the API call
-    //         const response = await fetch(apiUrl, {
-    //             method: 'PATCH',
-    //             body: formDataPayload,
-    //         });
-
-    //         const data = await response.json();
-
-    //         if (!response.ok) {
-    //             throw new Error(data.message || 'Submission failed');
-    //         }
-    //         console.log('Submission successful:', data);
-    //         alert('Vendor onboarding completed successfully!');
-
-    //         // Reset form on success
-    //         // setFormData({
-    //         //     panNumber: '',
-    //         //     panName: '',
-    //         //     dob: '',
-    //         //     panVerified: false,
-    //         //     panResponse: null,
-    //         //     gstNumber: '',
-    //         //     businessName: '',
-    //         //     gstVerified: false,
-    //         //     gstResponse: null,
-    //         //     gstList: [],
-    //         //     hasCIN: null,
-    //         //     cinNumber: '',
-    //         //     cinVerified: false,
-    //         //     cinResponse: null,
-    //         //     selectedDirector: '',
-    //         //     directorList: [],
-    //         //     documents: {
-    //         //         pan: null,
-    //         //         aadhar: null,
-    //         //         boardResolution: null,
-    //         //         cinCertificate: null,
-    //         //         aoa: null,
-    //         //         moa: null
-    //         //     },
-    //         //     accountNumber: '',
-    //         //     ifscCode: '',
-    //         //     phone: '',
-    //         //     bankName: '',
-    //         //     bankVerified: false,
-    //         //     bankResponse: null,
-    //         //     websiteLink: '',
-    //         //     lineOfBusiness: '',
-    //         //     mobileAppLink: '',
-    //         //     tncLink: '',
-    //         //     refundPolicyLink: '',
-    //         //     cancellationPolicyLink: '',
-    //         //     contactSupportInfo: '',
-    //         // });
-    //         // setCurrentStep(1);
-
-    //     } catch (error: any) {
-    //         console.error('Submission failed:', error);
-    //         alert(error.message);
-    //     } finally {
-    //         setLoading(false);
-    //     }
-    // };
-
-
     return (
-        <div className="min-h-screen bg-gray-50">
-            <div className="max-w-4xl mx-auto p-6">
-                <div className="bg-white rounded-lg shadow-lg p-6">
-                    <div className="mb-6">
-                        <h1 className="text-2xl font-bold text-gray-800 text-center mb-2">Vendor Onboarding</h1>
-                        <p className="text-gray-600 text-center text-sm">Complete your registration in {steps.length} simple steps</p>
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-6 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-4xl mx-auto">
+                <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+                    {/* Compact Header Section */}
+                    <div className="bg-gradient-to-r from-teal-500 to-emerald-500 px-5 sm:px-6 py-6 text-white">
+                        <div className="flex items-center justify-center">
+                            <div className="flex items-center justify-center bg-white/20 p-1.5 rounded-full backdrop-blur-sm mr-3">
+                                <Shield className="w-5 h-5 text-white" />
+                            </div>
+                            <h1 className="text-3xl font-bold">Vendor Onboarding</h1>
+                        </div>
                     </div>
 
-                    {renderStepIndicator()}
+                    <div className="p-5 sm:p-6">
+                        {renderStepIndicator()}
 
-                    <div className="mb-6">
-                        {renderCurrentStep()}
-                    </div>
-
-                    {/* Navigation */}
-                    <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-                        <button
-                            onClick={prevStep}
-                            disabled={currentStep === 1}
-                            className="flex items-center px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                            <ChevronLeft className="w-4 h-4 mr-2" />
-                            Previous
-                        </button>
-
-                        <div className="text-sm text-gray-500">
-                            Step {currentStep} of {steps.length}
+                        <div className="mb-6 bg-gray-50 rounded-lg p-4 border border-gray-100">
+                            {renderCurrentStep()}
                         </div>
 
-                        {currentStep < steps.length ? (
+                        {/* Navigation */}
+                        <div className="flex flex-col sm:flex-row justify-between items-center pt-5 border-t border-gray-200 gap-3">
                             <button
-                                onClick={nextStep}
-                                disabled={!canProceed()}
-                                className="flex items-center px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                onClick={prevStep}
+                                disabled={currentStep === 1}
+                                className="flex items-center px-4 py-2.5 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm w-full sm:w-auto justify-center text-sm"
                             >
-                                Next
-                                <ChevronRight className="w-4 h-4 ml-2" />
+                                <ChevronLeft className="w-4 h-4 mr-1.5" />
+                                Previous
                             </button>
-                        ) : (
-                            <button
-                                onClick={handleSubmit}
-                                disabled={!canProceed() || loading}
-                                className="flex items-center px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                {loading ? (
-                                    <>
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                        Submitting...
-                                    </>
-                                ) : (
-                                    <>
-                                        Submit Application
-                                        <CheckCircle className="w-4 h-4 ml-2" />
-                                    </>
-                                )}
-                            </button>
-                        )}
+
+                            <div className="text-xs text-gray-500 font-medium">
+                                Step {currentStep} of {steps.length}
+                            </div>
+
+                            {currentStep < steps.length ? (
+                                <button
+                                    onClick={nextStep}
+                                    disabled={!canProceed()}
+                                    className="flex items-center px-4 py-2.5 bg-teal-500 text-white rounded-lg hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg w-full sm:w-auto justify-center text-sm"
+                                >
+                                    Continue
+                                    <ChevronRight className="w-4 h-4 ml-1.5" />
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleSubmit}
+                                    disabled={!canProceed() || loading}
+                                    className="flex items-center px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg w-full sm:w-auto justify-center text-sm"
+                                >
+                                    {loading ? (
+                                        <>
+                                            <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white mr-1.5"></div>
+                                            Finalizing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            Complete
+                                            <CheckCircle className="w-4 h-4 ml-1.5" />
+                                        </>
+                                    )}
+                                </button>
+                            )}
+                        </div>
                     </div>
+                </div>
+
+                <div className="mt-6 text-center">
+                    <p className="text-xs text-gray-500 flex items-center justify-center">
+                        <HelpCircle className="w-3.5 h-3.5 mr-1.5 text-teal-500" />
+                        Need assistance? Contact support at
+                        <a href="mailto:support@example.com" className="text-teal-600 hover:text-teal-700 font-medium ml-1">
+                            support@example.com
+                        </a>
+                    </p>
                 </div>
             </div>
         </div>

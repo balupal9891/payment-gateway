@@ -30,7 +30,7 @@ import { store } from "./store/store";
 import StripeCheckout from './components/checkout/StripeCheckout.tsx';
 import VendorRegistration from './components/admin/vendor/VendorRegistration.tsx';
 import VendorManagement from './components/admin/vendor/VendorManagement.tsx';
-import ProtectedRoute from './components/ProtectedRoute.tsx';
+import ProtectedRoute from './utils/ProtectedRoute.tsx';
 import VendorOnboarding from './components/vendor/vendorKycForm.tsx';
 
 createRoot(document.getElementById('root')!).render(
@@ -44,7 +44,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/payu" element={<PaymentForm />} />
           <Route path="/success" element={<SuccessPage />} />
           <Route path="/cancel" element={<CancelledPage />} />
-          <Route path="/onboarding" element={<VendorOnboarding />} />
+          <Route path="/vendor/onboarding" element={<VendorOnboarding />} />
 
           {/* Protected routes */}
           <Route path='/admin' element={<Layout />}>
