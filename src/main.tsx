@@ -32,10 +32,12 @@ import VendorRegistration from './components/admin/vendor/VendorRegistration.tsx
 import VendorManagement from './components/admin/vendor/VendorManagement.tsx';
 import ProtectedRoute from './utils/ProtectedRoute.tsx';
 import VendorOnboarding from './components/vendor/vendorKycForm.tsx';
+import { ToastContainer } from 'react-toastify';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Provider store={store}>
+      <ToastContainer />
       <BrowserRouter>
         <Routes>
           {/* Public routes */}

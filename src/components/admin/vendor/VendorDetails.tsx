@@ -110,6 +110,8 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [verifying, setVerifying] = useState<string | null>(null);
   const [activeDocTab, setActiveDocTab] = useState<string>('pan');
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [modalImage, setModalImage] = useState<string | null>(null);
 
   const fetchVendorDetails = async (): Promise<void> => {
     try {
@@ -283,6 +285,18 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
     return null
   };
 
+
+
+  const openModal = (imgPath: string) => {
+    setModalImage(imgPath);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setModalImage(null);
+  };
+
   useEffect(() => {
     if (vendorId) {
       fetchVendorDetails();
@@ -413,7 +427,7 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
     };
 
     return (
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-slate-50 rounded-lg border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Documents Verification</h3>
 
         {/* Document Tabs */}
@@ -423,8 +437,8 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
               key={doc.id}
               onClick={() => setActiveDocTab(doc.id)}
               className={`flex-shrink-0 px-4 py-2 mr-2 rounded-lg text-sm font-medium transition-all duration-200 ${activeDocTab === doc.id
-                  ? 'bg-teal-100 text-teal-700 border border-teal-200 shadow-sm'
-                  : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                ? 'bg-teal-100 text-teal-700 border border-teal-200 shadow-sm'
+                : 'bg-slate-50 text-gray-600 hover:bg-gray-100 border border-gray-200'
                 }`}
             >
               {doc.name}
@@ -504,7 +518,7 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
             </div>
 
             {/* Right Column - Document Preview and Actions */}
-            <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm">
+            <div className="bg-slate-50 rounded-lg p-5 border border-gray-200 shadow-sm">
               {activeDoc.path ? (
                 <div className="space-y-5">
                   {/* Document Preview */}
@@ -513,27 +527,19 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
                       <Eye className="w-4 h-4 mr-2" />
                       Document Preview
                     </h5>
-                    <div className="flex justify-center items-center min-h-[200px] bg-white rounded-lg border-2 border-dashed border-gray-300">
+                    <div
+                      className="flex justify-center items-center min-h-[200px] bg-slate-50 rounded-lg border-2 border-dashed border-gray-300 cursor-pointer hover:bg-gray-100 transition"
+                      onClick={() => openModal(activeDoc.path!)}
+                    >
                       <img
                         src={activeDoc.path}
                         alt={activeDoc.name}
                         className="max-w-full max-h-64 object-contain rounded"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                          const fallback = e.currentTarget.parentElement;
-                          if (fallback) {
-                            fallback.innerHTML = `
-                              <div class="text-center text-gray-500 py-8">
-                                <FileText class="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                                <p class="font-medium">Document preview not available</p>
-                                <p class="text-sm text-gray-400 mt-1">Click download to view the file</p>
-                              </div>
-                            `;
-                          }
-                        }}
                       />
                     </div>
+                    <p className="text-center text-sm text-gray-500 mt-2">Click preview to enlarge</p>
                   </div>
+
 
                   {/* Document Actions */}
                   <div className="bg-gray-50 rounded-lg border border-gray-200 p-4">
@@ -544,19 +550,20 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <button
                         onClick={() => handleDownloadDocument(activeDoc.path!, activeDoc.name)}
-                        className="flex items-center space-x-2 px-4 py-3 text-sm bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-200 justify-center"
+                        className="flex items-center space-x-2 px-4 py-3 text-sm bg-slate-50 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-200 justify-center"
                       >
                         <Download className="w-4 h-4" />
                         <span>Download</span>
                       </button>
 
                       <button
-                        onClick={() => window.open(activeDoc.path!, '_blank')}
-                        className="flex items-center space-x-2 px-4 py-3 text-sm bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-200 justify-center"
+                        onClick={() => openModal(activeDoc.path!)}
+                        className="flex items-center space-x-2 px-4 py-3 text-sm bg-slate-50 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-200 justify-center"
                       >
                         <ExternalLink className="w-4 h-4" />
-                        <span>Open in New Tab</span>
+                        <span>View Larger</span>
                       </button>
+
                     </div>
                   </div>
                 </div>
@@ -586,7 +593,7 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
             type={type}
             value={(editForm as any)[field] || ''}
             onChange={(e) => handleInputChange(field, e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm bg-white"
+            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm bg-slate-50"
           />
         ) : (
           <p className="text-gray-900 text-sm break-words bg-gray-50 px-3 py-2 rounded-md">
@@ -609,7 +616,7 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
 
   if (error) {
     return (
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 bg-white min-h-screen">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 bg-slate-50 min-h-screen">
         <button
           onClick={onBack}
           className="mb-4 sm:mb-6 flex items-center space-x-2 text-teal-600 hover:text-teal-700 transition-colors"
@@ -618,7 +625,7 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
           <span className="text-sm sm:text-base">Back to Vendors</span>
         </button>
 
-        <div className="text-center py-8 sm:py-12 bg-white rounded-lg border border-slate-50 p-6">
+        <div className="text-center py-8 sm:py-12 bg-slate-50 rounded-lg border border-slate-50 p-6">
           <AlertCircle className="w-10 h-10 sm:w-12 sm:h-12 text-red-500 mx-auto mb-4" />
           <p className="text-red-600 mb-4 text-sm sm:text-base px-4">
             Error loading vendor details: {error}
@@ -637,9 +644,9 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
   if (!vendor) return null;
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6 bg-slate-50 min-h-screen">
+    <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6 bg-white min-h-screen">
       {/* Header */}
-      <div className="flex items-center justify-between bg-white border-slate-50 rounded-lg p-4 shadow-sm">
+      <div className="flex items-center justify-between bg-slate-50 border-slate-50 rounded-lg p-4 shadow-sm">
         <button
           onClick={onBack}
           className="flex items-center space-x-2 text-teal-600 hover:text-teal-700 transition-colors"
@@ -719,7 +726,7 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
       )}
 
       {/* Vendor Profile Header */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="bg-slate-50 rounded-xl shadow-sm border border-gray-200 p-6">
         <div className="flex items-center space-x-4">
           <div className="bg-teal-100 p-3 rounded-lg">
             <Building2 className="w-8 h-8 text-teal-600" />
@@ -763,7 +770,7 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
         {/* Left Column */}
         <div className="space-y-6">
           {/* Personal Information */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+          <div className="bg-slate-50 rounded-lg border border-gray-200 p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <User className="w-5 h-5 mr-2 text-teal-500" />
               Personal Information
@@ -776,7 +783,7 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
           </div>
 
           {/* Business Information */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+          <div className="bg-slate-50 rounded-lg border border-gray-200 p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <Building className="w-5 h-5 mr-2 text-teal-500" />
               Business Information
@@ -792,7 +799,7 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
         {/* Right Column */}
         <div className="space-y-6">
           {/* Registration Details */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+          <div className="bg-slate-50 rounded-lg border border-gray-200 p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <FileCheck className="w-5 h-5 mr-2 text-teal-500" />
               Registration Details
@@ -804,7 +811,7 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
           </div>
 
           {/* Bank Information */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+          <div className="bg-slate-50 rounded-lg border border-gray-200 p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <BanknoteIcon className="w-5 h-5 mr-2 text-teal-500" />
               Bank Details
@@ -822,7 +829,7 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
       {renderDocumentSection()}
 
       {/* Additional Links */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+      <div className="bg-slate-50 rounded-lg border border-gray-200 p-6 shadow-sm">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Additional Links</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           {renderField(<Globe className="w-4 h-4 text-teal-500" />, "Website", "websiteLink")}
@@ -831,6 +838,30 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
           {renderField(<FileText className="w-4 h-4 text-teal-500" />, "Terms & Conditions", "termAndConditionUrl")}
         </div>
       </div>
+
+      {isModalOpen && modalImage && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+    <div className="relative bg-white rounded-xl shadow-lg max-w-4xl w-full p-4">
+      {/* Close Button */}
+      <button
+        onClick={closeModal}
+        className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+      >
+        <X className="w-6 h-6" />
+      </button>
+
+      {/* Image */}
+      <div className="flex justify-center items-center max-h-[80vh] overflow-auto">
+        <img
+          src={modalImage}
+          alt="Document"
+          className="rounded-lg max-h-[75vh] object-contain"
+        />
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 };

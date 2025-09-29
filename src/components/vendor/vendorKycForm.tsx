@@ -2,6 +2,9 @@ import React, { useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Upload, AlertCircle, CheckCircle, Building, FileText, CreditCard, Globe, Phone, X, User, Shield, ArrowRight, Info, HelpCircle } from 'lucide-react';
 import baseURL, { verfifyUrl } from '../../API/baseUrl';
 import { useUser } from '../../store/slices/userSlice';
+import ToastContainer from '../../utils/ToastContainer';
+import { useToast } from '../../store/slices/toastSlice';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 
 // Type definitions (unchanged from your code)
@@ -26,7 +29,7 @@ interface FormData {
     // Step 1: PAN Details
     panNumber: string;
     panName: string;
-    dob: string;
+    // dob: string;
     panVerified: boolean;
     panResponse: any;
 
@@ -69,20 +72,26 @@ interface FormData {
     contactSupportInfo: string;
 }
 
-interface ValidationErrors {
-    [key: string]: string;
-}
+// interface ValidationErrors {
+//     [key: string]: string;
+// }
+
+
 
 const VendorOnboarding: React.FC = () => {
     const { user } = useUser();
-    const [errors, setErrors] = useState<ValidationErrors>({});
+    // const [errors, setErrors] = useState<ValidationErrors>({});
     const [loading, setLoading] = useState<boolean>(false);
+    const { addToast } = useToast();
+    const { setUserInStore} = useUser();
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
 
-    const [currentStep, setCurrentStep] = useState<number>(7);
+    const [currentStep, setCurrentStep] = useState<number>(3);
     const [formData, setFormData] = useState<FormData>({
         panNumber: '',
         panName: '',
-        dob: '',
+        // dob: '',
         panVerified: false,
         panResponse: null,
         gstNumber: '',
@@ -121,9 +130,6 @@ const VendorOnboarding: React.FC = () => {
 
 
 
-
-
-
     const updateFormData = <K extends keyof FormData>(field: K, value: FormData[K]): void => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
@@ -136,34 +142,41 @@ const VendorOnboarding: React.FC = () => {
 
     // API Calls (unchanged from your code)
     const verifyPAN = async () => {
-        if (!validatePAN(formData.panNumber) || !formData.panName || !formData.dob) {
-            setErrors({ panNumber: 'Please fill all PAN details correctly' });
+        if (!validatePAN(formData.panNumber) || !formData.panName) {
+            addToast('Please fill all PAN details correctly', 'error');
             return;
         }
 
         setLoading(true);
+        // setErrors({}); // Clear previous errors
         try {
-            const response = await fetch(`${verfifyUrl}/pan/lite/verify`, {
+            const response = await fetch(`${verfifyUrl}/pan/verify`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     pan: formData.panNumber,
                     name: formData.panName,
-                    dob: formData.dob
+                    // dob: formData.dob
                 })
             });
 
             const result = await response.json();
 
-            if (result.data.status === 'VALID') {
+            if (result.data?.valid == true) {
                 updateFormData('panVerified', true);
                 updateFormData('panResponse', result.data);
                 await fetchGSTList();
+                addToast('PAN verified successfully!', 'success');
             } else {
-                setErrors({ panNumber: 'PAN verification failed' });
+                // Show specific error message from API
+                const errorMessage = result.data?.message || result.message || 'PAN verification failed';
+                // setErrors({ panNumber: errorMessage });
+                addToast(errorMessage, 'error');
             }
-        } catch (error) {
-            setErrors({ panNumber: 'PAN verification failed' });
+        } catch (error: any) {
+            const errorMessage = error.message || 'PAN verification failed';
+            // setErrors({ panNumber: errorMessage });
+            addToast(errorMessage, 'error');
         } finally {
             setLoading(false);
         }
@@ -188,16 +201,17 @@ const VendorOnboarding: React.FC = () => {
 
     const verifyGST = async () => {
         if (!validateGST(formData.gstNumber)) {
-            setErrors({ gstNumber: 'Invalid GST format' });
+            addToast('Invalid GST format', 'error');
             return;
         }
 
         if (!formData.businessName) {
-            setErrors({ gstNumber: 'Please enter business name' });
+            addToast('Please enter business name', 'error');
             return;
         }
 
         setLoading(true);
+        // setErrors({});
         try {
             const response = await fetch(`${verfifyUrl}/gst/verify`, {
                 method: 'POST',
@@ -210,31 +224,38 @@ const VendorOnboarding: React.FC = () => {
 
             const result = await response.json();
 
-            if (result.data.valid) {
+            if (result.data?.valid) {
                 updateFormData('gstVerified', true);
                 updateFormData('gstResponse', result.data);
+                addToast('GST verified successfully!', 'success');
 
-                if (result.data.constitutionOfBusiness?.toLowerCase().includes('limited') ||
-                    result.data.constitutionOfBusiness?.toLowerCase().includes('company')) {
+                if (result.data?.constitutionOfBusiness?.toLowerCase().includes('limited') ||
+                    result.data?.constitutionOfBusiness?.toLowerCase().includes('company')) {
                     updateFormData('hasCIN', true);
                 }
             } else {
-                setErrors({ gstNumber: 'GST verification failed. Please check your GST number and business name.' });
+                // Enhanced error handling
+                const errorMessage = result.data?.message || result.message || 'GST verification failed';
+                // setErrors({ gstNumber: errorMessage });
+                addToast(errorMessage, 'error');
             }
-        } catch (error) {
-            setErrors({ gstNumber: 'GST verification failed' });
+        } catch (error: any) {
+            const errorMessage = error.message || 'GST verification failed';
+            // setErrors({ gstNumber: errorMessage });
+            addToast(errorMessage, 'error');
         } finally {
             setLoading(false);
         }
-    }; 29810110041666
+    };
 
     const verifyCIN = async () => {
         if (!validateCIN(formData.cinNumber)) {
-            setErrors({ cinNumber: 'Invalid CIN format' });
+            addToast('Invalid CIN format', 'error');
             return;
         }
 
         setLoading(true);
+        // setErrors({});
         try {
             const response = await fetch(`${verfifyUrl}/cin/verify`, {
                 method: 'POST',
@@ -244,15 +265,20 @@ const VendorOnboarding: React.FC = () => {
 
             const result = await response.json();
 
-            if (result.data.status === 'VALID' && result.data.cinStatus === 'ACTIVE') {
+            if (result.data?.status === 'VALID' && result.data?.cinStatus === 'ACTIVE') {
                 updateFormData('cinVerified', true);
                 updateFormData('cinResponse', result.data);
-                updateFormData('directorList', result.data.directorDetails);
+                updateFormData('directorList', result.data?.directorDetails);
+                addToast('CIN verified successfully!', 'success');
             } else {
-                setErrors({ cinNumber: 'CIN verification failed' });
+                const errorMessage = result.data?.message || result.message || 'CIN verification failed';
+                // setErrors({ cinNumber: errorMessage });
+                addToast(errorMessage, 'error');
             }
-        } catch (error) {
-            setErrors({ cinNumber: 'CIN verification failed' });
+        } catch (error: any) {
+            const errorMessage = error.message || 'CIN verification failed';
+            // setErrors({ cinNumber: errorMessage });
+            addToast(errorMessage, 'error');
         } finally {
             setLoading(false);
         }
@@ -260,11 +286,12 @@ const VendorOnboarding: React.FC = () => {
 
     const verifyBank = async () => {
         if (!formData.accountNumber || !validateIFSC(formData.ifscCode) || !formData.phone) {
-            setErrors({ bankDetails: 'Please fill all bank details correctly' });
+            addToast('Please fill all bank details correctly', 'error');
             return;
         }
 
         setLoading(true);
+        // setErrors({});
         try {
             const response = await fetch(`${verfifyUrl}/bank/verify`, {
                 method: 'POST',
@@ -272,21 +299,26 @@ const VendorOnboarding: React.FC = () => {
                 body: JSON.stringify({
                     bankAccount: formData.accountNumber,
                     ifscCode: formData.ifscCode,
-                    name: formData.panName,
+                    name: formData.bankName,
                     phone: formData.phone
                 })
             });
 
             const result = await response.json();
 
-            if (result.data.accountStatus === 'VALID') {
+            if (result.data?.accountStatus === 'VALID') {
                 updateFormData('bankVerified', true);
                 updateFormData('bankResponse', result.data);
+                addToast('Bank details verified successfully!', 'success');
             } else {
-                setErrors({ bankDetails: 'Bank verification failed' });
+                const errorMessage = result.data?.message || result.message || 'Bank verification failed';
+                // setErrors({ bankDetails: errorMessage });
+                addToast(errorMessage, 'error');
             }
-        } catch (error) {
-            setErrors({ bankDetails: 'Bank verification failed' });
+        } catch (error: any) {
+            const errorMessage = error.message || 'Bank verification failed';
+            // setErrors({ bankDetails: errorMessage });
+            addToast(errorMessage, 'error');
         } finally {
             setLoading(false);
         }
@@ -337,14 +369,14 @@ const VendorOnboarding: React.FC = () => {
     const nextStep = () => {
         if (currentStep < steps.length) {
             setCurrentStep(prev => prev + 1);
-            setErrors({});
+            // setErrors({});
         }
     };
 
     const prevStep = () => {
         if (currentStep > 1) {
             setCurrentStep(prev => prev - 1);
-            setErrors({});
+            // setErrors({});
         }
     };
 
@@ -418,7 +450,7 @@ const VendorOnboarding: React.FC = () => {
                     />
                 </div>
 
-                <div>
+                {/* <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth *</label>
                     <input
                         type="date"
@@ -426,7 +458,7 @@ const VendorOnboarding: React.FC = () => {
                         onChange={(e) => updateFormData('dob', e.target.value)}
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 shadow-sm transition-all"
                     />
-                </div>
+                </div> */}
             </div>
 
             {!formData.panVerified && (
@@ -456,20 +488,20 @@ const VendorOnboarding: React.FC = () => {
                         <span className="text-green-800 font-medium">PAN Verified Successfully</span>
                     </div>
                     <div className="text-sm text-green-700">
-                        <p>Status: {formData.panResponse.status}</p>
+                        <p>Status: {formData.panResponse.valid ? 'Valid' : 'Invalid'}</p>
                         <p>Reference ID: {formData.panResponse.referenceId}</p>
                     </div>
                 </div>
             )}
 
-            {errors.panNumber && (
-                <div className="bg-red-50 p-3 rounded-lg border border-red-200">
-                    <p className="text-red-700 text-sm flex items-center">
-                        <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
-                        {errors.panNumber}
-                    </p>
-                </div>
-            )}
+            {/* {errors.panNumber && (
+    <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+        <p className="text-red-700 text-sm flex items-center">
+            <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+            {errors.panNumber}
+        </p>
+    </div>
+)} */}
         </div>
     );
 
@@ -571,14 +603,14 @@ const VendorOnboarding: React.FC = () => {
                 </div>
             )}
 
-            {errors.gstNumber && (
-                <div className="bg-red-50 p-3 rounded-lg border border-red-200">
-                    <p className="text-red-700 text-sm flex items-center">
-                        <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
-                        {errors.gstNumber}
-                    </p>
-                </div>
-            )}
+            {/* {errors.gstNumber && (
+    <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+        <p className="text-red-700 text-sm flex items-center">
+            <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+            {errors.gstNumber}
+        </p>
+    </div>
+)} */}
         </div>
     );
 
@@ -631,14 +663,14 @@ const VendorOnboarding: React.FC = () => {
                 </div>
             )}
 
-            {errors.cinNumber && (
-                <div className="bg-red-50 p-3 rounded-lg border border-red-200">
-                    <p className="text-red-700 text-sm flex items-center">
-                        <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
-                        {errors.cinNumber}
-                    </p>
-                </div>
-            )}
+            {/* {errors.cinNumber && (
+    <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+        <p className="text-red-700 text-sm flex items-center">
+            <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+            {errors.cinNumber}
+        </p>
+    </div>
+)} */}
         </div>
     );
 
@@ -869,105 +901,105 @@ const VendorOnboarding: React.FC = () => {
                 </div>
             )}
 
-            {errors.bankDetails && (
-                <div className="bg-red-50 p-3 rounded-lg border border-red-200">
-                    <p className="text-red-700 text-sm flex items-center">
-                        <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
-                        {errors.bankDetails}
-                    </p>
-                </div>
-            )}
+            {/* {errors.bankDetails && (
+    <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+        <p className="text-red-700 text-sm flex items-center">
+            <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+            {errors.bankDetails}
+        </p>
+    </div>
+)} */}
         </div>
     );
 
     const renderBusinessStep = () => (
-  <div className="w-full bg-gray-50 p-8 rounded-2xl shadow-md space-y-6 border border-gray-200">
-    {/* Title */}
-    <h2 className="text-3xl font-bold text-gray-800 text-center pb-4 border-b border-gray-200">
-      Business Information
-    </h2>
+        <div className="w-full bg-gray-50 p-8 rounded-2xl shadow-md space-y-6 border border-gray-200">
+            {/* Title */}
+            <h2 className="text-3xl font-bold text-gray-800 text-center pb-4 border-b border-gray-200">
+                Business Information
+            </h2>
 
-    {/* Website Link */}
-    <div>
-      <input
-        type="url"
-        value={formData.websiteLink}
-        onChange={(e) => updateFormData("websiteLink", e.target.value)}
-        placeholder="Website Link"
-        className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white text-gray-700 placeholder-gray-400"
-      />
-    </div>
+            {/* Website Link */}
+            <div>
+                <input
+                    type="url"
+                    value={formData.websiteLink}
+                    onChange={(e) => updateFormData("websiteLink", e.target.value)}
+                    placeholder="Website Link"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white text-gray-700 placeholder-gray-400"
+                />
+            </div>
 
-    {/* Mobile App Link */}
-    <div>
-      <input
-        type="url"
-        value={formData.mobileAppLink}
-        onChange={(e) => updateFormData("mobileAppLink", e.target.value)}
-        placeholder="Mobile App Link"
-        className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white text-gray-700 placeholder-gray-400"
-      />
-    </div>
+            {/* Mobile App Link */}
+            <div>
+                <input
+                    type="url"
+                    value={formData.mobileAppLink}
+                    onChange={(e) => updateFormData("mobileAppLink", e.target.value)}
+                    placeholder="Mobile App Link"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white text-gray-700 placeholder-gray-400"
+                />
+            </div>
 
-    {/* Line of Business */}
-    <div>
-      <textarea
-        value={formData.lineOfBusiness}
-        onChange={(e) => updateFormData("lineOfBusiness", e.target.value)}
-        rows={3}
-        placeholder="Line of Business *"
-        className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white text-gray-700 placeholder-gray-400 resize-none"
-      />
-    </div>
+            {/* Line of Business */}
+            <div>
+                <textarea
+                    value={formData.lineOfBusiness}
+                    onChange={(e) => updateFormData("lineOfBusiness", e.target.value)}
+                    rows={3}
+                    placeholder="Line of Business *"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white text-gray-700 placeholder-gray-400 resize-none"
+                />
+            </div>
 
-    {/* Terms & Conditions */}
-    <div>
-      <input
-        type="url"
-        value={formData.tncLink}
-        onChange={(e) => updateFormData("tncLink", e.target.value)}
-        placeholder="Terms & Conditions Link"
-        className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white text-gray-700 placeholder-gray-400"
-      />
-    </div>
+            {/* Terms & Conditions */}
+            <div>
+                <input
+                    type="url"
+                    value={formData.tncLink}
+                    onChange={(e) => updateFormData("tncLink", e.target.value)}
+                    placeholder="Terms & Conditions Link"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white text-gray-700 placeholder-gray-400"
+                />
+            </div>
 
-    {/* Refund Policy */}
-    <div>
-      <input
-        type="url"
-        value={formData.refundPolicyLink}
-        onChange={(e) => updateFormData("refundPolicyLink", e.target.value)}
-        placeholder="Refund Policy Link"
-        className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white text-gray-700 placeholder-gray-400"
-      />
-    </div>
+            {/* Refund Policy */}
+            <div>
+                <input
+                    type="url"
+                    value={formData.refundPolicyLink}
+                    onChange={(e) => updateFormData("refundPolicyLink", e.target.value)}
+                    placeholder="Refund Policy Link"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white text-gray-700 placeholder-gray-400"
+                />
+            </div>
 
-    {/* Cancellation Policy */}
-    <div>
-      <input
-        type="url"
-        value={formData.cancellationPolicyLink}
-        onChange={(e) => updateFormData("cancellationPolicyLink", e.target.value)}
-        placeholder="Cancellation Policy Link"
-        className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white text-gray-700 placeholder-gray-400"
-      />
-    </div>
+            {/* Cancellation Policy */}
+            <div>
+                <input
+                    type="url"
+                    value={formData.cancellationPolicyLink}
+                    onChange={(e) => updateFormData("cancellationPolicyLink", e.target.value)}
+                    placeholder="Cancellation Policy Link"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white text-gray-700 placeholder-gray-400"
+                />
+            </div>
 
-    {/* Contact Support */}
-    <div>
-      <textarea
-        value={formData.contactSupportInfo}
-        onChange={(e) => updateFormData("contactSupportInfo", e.target.value)}
-        rows={3}
-        placeholder="Contact Support Information *"
-        className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white text-gray-700 placeholder-gray-400 resize-none"
-      />
-      <p className="text-sm text-gray-500 mt-2 italic">
-        Provide multiple contact methods for customer support
-      </p>
-    </div>
-  </div>
-);
+            {/* Contact Support */}
+            <div>
+                <textarea
+                    value={formData.contactSupportInfo}
+                    onChange={(e) => updateFormData("contactSupportInfo", e.target.value)}
+                    rows={3}
+                    placeholder="Contact Support Information *"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white text-gray-700 placeholder-gray-400 resize-none"
+                />
+                <p className="text-sm text-gray-500 mt-2 italic">
+                    Provide multiple contact methods for customer support
+                </p>
+            </div>
+        </div>
+    );
 
 
 
@@ -1039,7 +1071,7 @@ const VendorOnboarding: React.FC = () => {
             if (panResponse) {
                 jsonPayload.panNumber = panResponse.pan;
                 jsonPayload.panName = panResponse.name;
-                jsonPayload.dob = panResponse.dob;
+                // jsonPayload.dob = panResponse.dob;
                 jsonPayload.panStatus = panResponse.status;
             }
             jsonPayload.isPanVerified = formData.panVerified;
@@ -1116,19 +1148,46 @@ const VendorOnboarding: React.FC = () => {
             }
             console.log("Form data:", form);;
             // Step 3: Send request
-            const response = await fetch(apiUrl, {
+            let response: any = await fetch(apiUrl, {
                 method: "PATCH",
                 body: form,
             });
 
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.message || "Submission failed");
+            // response = await response.json();
+            // console.log("response", response);
 
-            console.log("Submission successful:", data);
-            alert("Vendor onboarding completed successfully!");
+            if (!response.ok) throw new Error(response.message || "Submission failed");
+
+            // console.log("Submission successful:", data);
+            if (response.status === 200) {
+                // const data = response.data;
+                const data = await response.json();
+                console.log("Submission response data:", data);
+                const profile = data.data?.profile;
+                // console.log("Login response data:", data);
+                console.log("User profile:", profile);
+                setUserInStore({
+                    profile: profile,
+                    accessToken: data.data.accessToken,
+                    refreshToken: data.data.refreshToken,
+                });
+                // showToast("Login successful!", "success");
+                const roleName = data?.data?.profile?.role?.roleName;
+                console.log("User role:", roleName);
+
+                if (roleName === "Admin" || roleName === "Super Admin") {
+                    navigate("/dashboard");
+                } else if (roleName === "vendor") {
+                    navigate("/dashboard");
+                } else {
+                    const redirectPath = searchParams.get("redirect") || "/";
+                    navigate(redirectPath);
+                }
+            }
+            addToast("Vendor onboarding completed successfully!");
         } catch (error: any) {
             console.error("Submission failed:", error);
-            alert(error.message);
+            addToast(error.message);
         } finally {
             setLoading(false);
         }
@@ -1136,6 +1195,8 @@ const VendorOnboarding: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-6 px-4 sm:px-6 lg:px-8">
+
+            <ToastContainer />
             <div className="max-w-4xl mx-auto">
                 <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
                     {/* Compact Header Section */}
@@ -1151,7 +1212,7 @@ const VendorOnboarding: React.FC = () => {
                     <div className="p-5 sm:p-6">
                         {renderStepIndicator()}
 
-                        <div className="mb-6 bg-gray-50 rounded-lg p-4 border border-gray-100">
+                        <div className="mb-6 bg-white rounded-lg p-4">
                             {renderCurrentStep()}
                         </div>
 

@@ -73,7 +73,7 @@ const VendorManagement: React.FC = () => {
   };
 
   return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-white">
         {/* Container with responsive padding and spacing */}
         <div className="w-full max-w-full overflow-x-hidden">
           {currentView === "list" ? (

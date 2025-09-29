@@ -70,9 +70,8 @@ const SuccessOverlay: React.FC<SuccessOverlayProps> = ({ message }) => (
 
 const CustomToast: React.FC<ToastProps> = ({ message, type, onClose }) => (
   <div
-    className={`fixed top-4 right-4 max-w-sm w-full bg-white rounded-lg shadow-lg border-l-4 ${
-      type === "success" ? "border-teal-500" : "border-red-500"
-    } p-4 flex items-center space-x-3 animate-slide-in z-50`}
+    className={`fixed top-4 right-4 max-w-sm w-full bg-white rounded-lg shadow-lg border-l-4 ${type === "success" ? "border-teal-500" : "border-red-500"
+      } p-4 flex items-center space-x-3 animate-slide-in z-50`}
   >
     {type === "success" ? (
       <CheckCircle className="text-teal-500 flex-shrink-0" size={20} />
@@ -81,9 +80,8 @@ const CustomToast: React.FC<ToastProps> = ({ message, type, onClose }) => (
     )}
     <div className="flex-1">
       <p
-        className={`text-sm font-medium ${
-          type === "success" ? "text-teal-800" : "text-red-800"
-        }`}
+        className={`text-sm font-medium ${type === "success" ? "text-teal-800" : "text-red-800"
+          }`}
       >
         {message}
       </p>
@@ -116,9 +114,8 @@ const CompactFloatingInput: React.FC<InputProps> = ({
       <div className="relative">
         {Icon && (
           <Icon
-            className={`absolute left-3 top-3 transition-colors duration-200 ${
-              focused || hasValue ? "text-teal-500" : "text-gray-400"
-            }`}
+            className={`absolute left-3 top-3 transition-colors duration-200 ${focused || hasValue ? "text-teal-500" : "text-gray-400"
+              }`}
             size={18}
           />
         )}
@@ -130,14 +127,12 @@ const CompactFloatingInput: React.FC<InputProps> = ({
           onChange={onChange}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          className={`w-full px-3 py-2.5 ${Icon ? "pl-10" : "pl-3"} ${
-            hasToggle ? "pr-10" : "pr-3"
-          } 
+          className={`w-full px-3 py-2.5 ${Icon ? "pl-10" : "pl-3"} ${hasToggle ? "pr-10" : "pr-3"
+            } 
             border-2 rounded-lg transition-all duration-200 outline-none text-sm
-            ${
-              error && touched
-                ? "border-red-500 focus:border-red-500"
-                : focused || hasValue
+            ${error && touched
+              ? "border-red-500 focus:border-red-500"
+              : focused || hasValue
                 ? "border-teal-500 focus:border-teal-500"
                 : "border-gray-300 focus:border-teal-500"
             }
@@ -147,12 +142,11 @@ const CompactFloatingInput: React.FC<InputProps> = ({
 
         <label
           className={`absolute ${Icon ? "left-10" : "left-3"} transition-all duration-200 pointer-events-none
-          ${
-            focused || hasValue
+          ${focused || hasValue
               ? "-top-2 text-xs bg-white px-1 font-medium" +
-                (error && touched ? " text-red-500" : " text-teal-500")
+              (error && touched ? " text-red-500" : " text-teal-500")
               : "top-2.5 text-gray-500 text-sm"
-          }
+            }
         `}
         >
           {label}
@@ -334,47 +328,47 @@ export default function SignupPage() {
         <div className="hidden lg:flex lg:flex-1 bg-gradient-to-br from-teal-600 via-teal-700 to-teal-800 relative overflow-hidden">
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="relative z-10 px-12 text-white">
-  <h1 className="text-4xl font-bold mb-6">Simplify Global Payments</h1>
-  <p className="text-xl mb-8">Unify payment processing with our multi-gateway platform. Fast integration, maximum flexibility.</p>
- 
-  <div className="space-y-4 mb-8">
-    <div className="flex items-center">
-      <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center mr-3">
-        <CheckCircle size={16} className="text-white" />
-      </div>
-      <span>Integrate once, access 20+ payment gateways</span>
-    </div>
-    <div className="flex items-center">
-      <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center mr-3">
-        <CheckCircle size={16} className="text-white" />
-      </div>
-      <span>Global payment processing in 150+ currencies</span>
-    </div>
-    <div className="flex items-center">
-      <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center mr-3">
-        <CheckCircle size={16} className="text-white" />
-      </div>
-      <span>Seamless vendor onboarding & management</span>
-    </div>
-    <div className="flex items-center">
-      <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center mr-3">
-        <CheckCircle size={16} className="text-white" />
-      </div>
-      <span>Advanced fraud protection & compliance</span>
-    </div>
-    <div className="flex items-center">
-      <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center mr-3">
-        <CheckCircle size={16} className="text-white" />
-      </div>
-      <span>Real-time analytics & reporting dashboard</span>
-    </div>
-  </div>
-  
-  {/* Animated circles in background */}
-  <div className="absolute -top-20 -left-20 w-64 h-64 rounded-full bg-teal-500 opacity-20 animate-pulse"></div>
-  <div className="absolute -bottom-20 -right-20 w-80 h-80 rounded-full bg-teal-400 opacity-15 animate-ping"></div>
-  <div className="absolute top-1/2 right-1/4 w-40 h-40 rounded-full bg-white opacity-10 animate-bounce"></div>
-</div>
+              <h1 className="text-4xl font-bold mb-6">Simplify Global Payments</h1>
+              <p className="text-xl mb-8">Unify payment processing with our multi-gateway platform. Fast integration, maximum flexibility.</p>
+
+              <div className="space-y-4 mb-8">
+                <div className="flex items-center">
+                  <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center mr-3">
+                    <CheckCircle size={16} className="text-white" />
+                  </div>
+                  <span>Integrate once, access 20+ payment gateways</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center mr-3">
+                    <CheckCircle size={16} className="text-white" />
+                  </div>
+                  <span>Global payment processing in 150+ currencies</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center mr-3">
+                    <CheckCircle size={16} className="text-white" />
+                  </div>
+                  <span>Seamless vendor onboarding & management</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center mr-3">
+                    <CheckCircle size={16} className="text-white" />
+                  </div>
+                  <span>Advanced fraud protection & compliance</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center mr-3">
+                    <CheckCircle size={16} className="text-white" />
+                  </div>
+                  <span>Real-time analytics & reporting dashboard</span>
+                </div>
+              </div>
+
+              {/* Animated circles in background */}
+              <div className="absolute -top-20 -left-20 w-64 h-64 rounded-full bg-teal-500 opacity-20 animate-pulse"></div>
+              <div className="absolute -bottom-20 -right-20 w-80 h-80 rounded-full bg-teal-400 opacity-15 animate-ping"></div>
+              <div className="absolute top-1/2 right-1/4 w-40 h-40 rounded-full bg-white opacity-10 animate-bounce"></div>
+            </div>
           </div>
         </div>
 
