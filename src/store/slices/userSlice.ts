@@ -10,10 +10,20 @@ export interface UserProfile {
   mobile?: string;
   [key: string]: any; 
 }
-const savedUser = Cookies.get("user");
+const savedUserRaw = Cookies.get("user");
+let savedUser: UserProfile | null = null;
 
+if (savedUserRaw) {
+  try {
+    savedUser = JSON.parse(savedUserRaw);
+  } catch (err) {
+    console.warn("Failed to parse user cookie:", err);
+    savedUser = null;
+    Cookies.remove("user"); // remove corrupted cookie
+  }
+}
 const initialState = {
-  user: savedUser ? JSON.parse(savedUser) : null,
+  user: savedUser,
   loading: true,
   currency: "₹",
 };
@@ -22,26 +32,33 @@ const userSlice = createSlice({
   name: "user",
   initialState,
   reducers: {
-    setUserInStore: (
-      state,
-      action: PayloadAction<{
-        profile: UserProfile;
-        accessToken: string;
-        refreshToken: string;
-      }>
-    ) => {
-      const { profile, accessToken, refreshToken } = action.payload;
-      console.log(profile, accessToken, refreshToken);
+    // In your slice
+setUserInStore: (
+  state,
+  action: PayloadAction<{
+    profile: UserProfile;
+    accessToken?: string;
+    refreshToken?: string;
+  }>
+) => {
+  const { profile, accessToken, refreshToken } = action.payload;
 
-      state.user = profile;
+  // Always update profile
+  state.user = profile;
+  Cookies.set("user", JSON.stringify(profile));
 
-      Cookies.set("user", JSON.stringify(profile));
-      Cookies.set("accessToken", accessToken);
-      Cookies.set("refreshToken", refreshToken);
+  // Update tokens only if provided
+  if (accessToken) {
+    Cookies.set("accessToken", accessToken);
+    (window as any).authToken = accessToken;
+  }
 
-      (window as any).authToken = accessToken;
-      (window as any).refreshToken = refreshToken;
-    },
+  if (refreshToken) {
+    Cookies.set("refreshToken", refreshToken);
+    (window as any).refreshToken = refreshToken;
+  }
+}
+,
     setUserFromStorage: (state) => {
       const savedUser = Cookies.get("user");
       const accessToken = Cookies.get("accessToken");
@@ -93,8 +110,8 @@ export const useUser = () => {
 
     setUserInStore: (payload: {
       profile: UserProfile;
-      accessToken: string;
-      refreshToken: string;
+      accessToken?: string;
+      refreshToken?: string;
     }) => dispatch(setUserInStore(payload)),
 
     setUserFromStorage: () => dispatch(setUserFromStorage()),

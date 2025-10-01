@@ -183,8 +183,8 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
       setVerifying(docType);
       setError(null);
 
-      const response = await apiClient.post(`/vendor/verify-doc/${vendorId}`, {
-        documentType: docType,
+      const response = await apiClient.post(`/vendor/verify-document/${vendorId}`, {
+        docType: docType,
         isVerified: true
       });
 
@@ -200,13 +200,36 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
     }
   };
 
+  const handleDeleteDocument = async (docId: string) => {
+  try {
+    setVerifying(docId);
+    
+    // Call your delete API - replace with your actual endpoint
+    const res = await apiClient.delete(`/vendor/delete-document/${vendorId}`, {
+      data: { docType: docId }
+    });
+
+    if (res.data) {
+      await fetchVendorDetails();
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    }
+
+    
+  } catch (error) {
+    console.error('Error deleting document:', error);
+  } finally {
+    setVerifying(null);
+  }
+};
+
   const handleUnverifyDocument = async (docType: string): Promise<void> => {
     try {
       setVerifying(docType);
       setError(null);
 
-      const response = await apiClient.post(`/vendor/verify-doc/${vendorId}`, {
-        documentType: docType,
+      const response = await apiClient.post(`/vendor/verify-document/${vendorId}`, {
+        docType: docType,
         isVerified: false
       });
 
@@ -556,14 +579,19 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
                         <span>Download</span>
                       </button>
 
+                      {/* Delete button */}
                       <button
-                        onClick={() => openModal(activeDoc.path!)}
-                        className="flex items-center space-x-2 px-4 py-3 text-sm bg-slate-50 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors border border-gray-200 justify-center"
+                        onClick={() => handleDeleteDocument(activeDoc.id)}
+                        disabled={verifying === activeDoc.id}
+                        className="flex items-center space-x-2 px-4 py-3 text-sm bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors border border-red-200 justify-center disabled:opacity-50"
                       >
-                        <ExternalLink className="w-4 h-4" />
-                        <span>View Larger</span>
+                        {verifying === activeDoc.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                        <span>Delete</span>
                       </button>
-
                     </div>
                   </div>
                 </div>
@@ -840,27 +868,27 @@ const VendorDetails: React.FC<VendorDetailsProps> = ({ vendorId, onBack }) => {
       </div>
 
       {isModalOpen && modalImage && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-    <div className="relative bg-white rounded-xl shadow-lg max-w-4xl w-full p-4">
-      {/* Close Button */}
-      <button
-        onClick={closeModal}
-        className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
-      >
-        <X className="w-6 h-6" />
-      </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+          <div className="relative bg-white rounded-xl shadow-lg max-w-4xl w-full p-4">
+            {/* Close Button */}
+            <button
+              onClick={closeModal}
+              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+            >
+              <X className="w-6 h-6" />
+            </button>
 
-      {/* Image */}
-      <div className="flex justify-center items-center max-h-[80vh] overflow-auto">
-        <img
-          src={modalImage}
-          alt="Document"
-          className="rounded-lg max-h-[75vh] object-contain"
-        />
-      </div>
-    </div>
-  </div>
-)}
+            {/* Image */}
+            <div className="flex justify-center items-center max-h-[80vh] overflow-auto">
+              <img
+                src={modalImage}
+                alt="Document"
+                className="rounded-lg max-h-[75vh] object-contain"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -1059,7 +1059,7 @@ const VendorOnboarding: React.FC = () => {
 
     const handleSubmit = async () => {
         setLoading(true);
-        const vendorId = user.vendorId;
+        const vendorId = user?.vendorId;
         const apiUrl = `${baseURL}/vendor/update/${vendorId}`;
 
         try {
@@ -1163,13 +1163,13 @@ const VendorOnboarding: React.FC = () => {
                 // const data = response.data;
                 const data = await response.json();
                 console.log("Submission response data:", data);
-                const profile = data.data?.profile;
+                const profile = data.data;
                 // console.log("Login response data:", data);
                 console.log("User profile:", profile);
                 setUserInStore({
                     profile: profile,
-                    accessToken: data.data.accessToken,
-                    refreshToken: data.data.refreshToken,
+                    // accessToken: data.data.accessToken,
+                    // refreshToken: data.data.refreshToken,
                 });
                 // showToast("Login successful!", "success");
                 const roleName = data?.data?.profile?.role?.roleName;
