@@ -190,7 +190,7 @@ const TransactionsPage: React.FC = () => {
       let endpoint = '';
       
       // Determine endpoint based on user role
-      if (user?.role.roleName === 'Super Admin' || user?.role.roleName === 'Admin') {
+      if (user?.role?.roleName === 'Super Admin' || user?.role.roleName === 'Admin') {
         endpoint = `${baseURL}/transaction/all`;
       } else if (user?.vendorId) {
         endpoint = `${baseURL}/transaction/vendor/${user.vendorId}`;

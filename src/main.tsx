@@ -1,5 +1,5 @@
 // main.tsx or index.tsx
-import { StrictMode } from 'react';
+import { StrictMode, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './index.css';
@@ -26,18 +26,32 @@ import SignupPage from './components/auth/Signup.tsx';
 import NotFound from './components/NotFound.tsx';
 
 import { Provider, useDispatch } from "react-redux";
-import { store } from "./store/store";
+import { store, type AppDispatch } from "./store/store";
 import StripeCheckout from './components/checkout/StripeCheckout.tsx';
 import VendorRegistration from './components/admin/vendor/VendorRegistration.tsx';
 import VendorManagement from './components/admin/vendor/VendorManagement.tsx';
 import ProtectedRoute from './utils/ProtectedRoute.tsx';
 import VendorOnboarding from './components/vendor/vendorKycForm.tsx';
 import { ToastContainer } from 'react-toastify';
+import { validateAndFetchUser } from './store/slices/userSlice.ts';
+
+function Startup() {
+  const dispatch: AppDispatch = useDispatch();
+
+  useEffect(() => {
+    dispatch(validateAndFetchUser());
+  }, [dispatch]);
+
+  return null; // invisible
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Provider store={store}>
       <ToastContainer />
+      <Startup />
+
+
       <BrowserRouter>
         <Routes>
           {/* Public routes */}

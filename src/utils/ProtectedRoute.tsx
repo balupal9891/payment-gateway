@@ -1,22 +1,22 @@
 import { Navigate } from "react-router-dom";
-import {type JSX } from "react";
+import { type JSX } from "react";
 import { useUser } from "../store/slices/userSlice";
 
-
 export default function ProtectedRoute({ children }: { children: JSX.Element }) {
-  const { user } = useUser();
-  console.log("userProtected", user);
-  const isAuthenticated = !!user;
+  const { user, loading } = useUser(); 
 
-  if (!isAuthenticated) {
+  if (loading == true) {
+    
+    return <div>Loading...</div>;
+  }
+
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  console.log(user.formStatus !== "COMPLETED");
-
-  if (user.formStatus == null || user.formStatus !== "COMPLETED") {
-    console.log("formStatus is not COMPLETED, redirecting to /vendor/onboarding");
+  if (!user.formStatus || user.formStatus !== "COMPLETED") {
     return <Navigate to="/vendor/onboarding" replace />;
   }
+
   return children;
 }

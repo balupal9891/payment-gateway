@@ -87,7 +87,7 @@ const VendorOnboarding: React.FC = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
 
-    const [currentStep, setCurrentStep] = useState<number>(3);
+    const [currentStep, setCurrentStep] = useState<number>(1);
     const [formData, setFormData] = useState<FormData>({
         panNumber: '',
         panName: '',
@@ -1176,12 +1176,13 @@ const VendorOnboarding: React.FC = () => {
                 console.log("User role:", roleName);
 
                 if (roleName === "Admin" || roleName === "Super Admin") {
-                    navigate("/dashboard");
-                } else if (roleName === "vendor") {
-                    navigate("/dashboard");
+                    navigate("/");
+                } else if (roleName === "Vendor") {
+                    navigate("/");
                 } else {
-                    const redirectPath = searchParams.get("redirect") || "/";
-                    navigate(redirectPath);
+                    // const redirectPath = searchParams.get("redirect") || "/";
+                    // navigate(redirectPath);
+                    navigate('/');
                 }
             }
             addToast("Vendor onboarding completed successfully!");
